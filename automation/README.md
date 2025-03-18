@@ -1,7 +1,3 @@
-Below is an updated version of the README, incorporating a new section about the Terraform automation folder and how it relates to the Recruitment Voice Assistant project. Adjust paths, naming conventions, and details as needed for your specific environment and project requirements.
-
----
-
 # Azure Solution Deployment Using Terraform
 
 ## Table of Contents
