@@ -1,0 +1,23 @@
+# avoid accidentally committing your local secrets
+*.env
+venv/
+venv2/
+venv3/
+.venv/
+.venv/**
+automation/.terraform/
+automation/.terraform.lock.hcl
+api/__pycache__/
+api/config/__pycache__/
+api/src/__pycache__/
+api/src/config/__pycache__/
+__pycache__/
+**/__pycache__/
+**/__pycache__/**
+**/*.pyc
+*.pyc
+.pyc
+.vscode/
+logs/
+logs/**
+*.log

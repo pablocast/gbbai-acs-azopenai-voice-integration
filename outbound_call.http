@@ -1,0 +1,30 @@
+### call via local for GPT-4o Realtime voice model - travel agent
+# Payload validation needed to avoid jailbreak attacks
+POST http://localhost:8000/api/initiateOutboundCall
+Content-Type: application/json
+
+{
+    "phone_number": "<>",
+    "customer_name": "John Smith",
+    "customer_email": "john_smith@hotmail.com",
+    "destination_of_interest": "Barcelona, Spain",
+    "city_of_origin": "New York City, USA",
+    "travel_dates": "late May 2025",
+    "duration_of_stay": "unknown"
+}
+
+
+
+### call via web app
+POST tf-ai-aivoice-dev-api-rkvm.azurewebsites.net/api/initiateOutboundCall
+Content-Type: application/json
+
+{
+    "phone_number": "<>",
+    "customer_name": "John Smith",
+    "customer_email": "john_smith@hotmail.com",
+    "destination_of_interest": "Barcelona, Spain",
+    "city_of_origin": "New York City, USA",
+    "travel_dates": "late May 2025",
+    "duration_of_stay": "unknown"
+}
