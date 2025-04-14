@@ -13,7 +13,7 @@ import random
 
 def session_config(sys_msg: str):
     """Returns a random value from the predefined list."""
-    values = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']
+    values = ["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse"]
     ### for details on available param: https://platform.openai.com/docs/api-reference/realtime-sessions/create
     SESSION_CONFIG={
         "input_audio_transcription": {
@@ -82,10 +82,10 @@ class OpenAIRealtimeService:
         client = AsyncAzureOpenAI(
                 azure_endpoint=self.config.AZURE_OPENAI_SERVICE_ENDPOINT,
                 azure_deployment=self.config.AZURE_OPENAI_DEPLOYMENT_MODEL_NAME,
-                api_key=AzureKeyCredential(self.config.AZURE_OPENAI_SERVICE_KEY), 
+                api_key=self.config.AZURE_OPENAI_SERVICE_KEY, 
                 api_version="2024-10-01-preview",
             )
-        connection_manager = self.client.beta.realtime.connect(
+        connection_manager = client.beta.realtime.connect(
                     model=self.config.AZURE_OPENAI_DEPLOYMENT_MODEL_NAME,
         )
         active_connection = await connection_manager.enter()
@@ -138,7 +138,7 @@ class OpenAIRealtimeService:
                                 print(f"  Status Details: {event.response.status_details.model_dump_json()}")
                         case "response.audio_transcript.done":
                             print(f" AI:-- {event.transcript}")
-                            if any(keyword in event.transcript.lower() for keyword in ["bye", "goodbye", "take care"]):
+                            if any(keyword in event.transcript.lower() for keyword in ["bye", "goodbye", "take care", "have a great day", "have a good day"]):
                                 # await _handle_hangup(acs_call_connection_id)
                                 # TODO: implement hangup
                                 #await self.cleanup_call_resources(call_id)
@@ -219,6 +219,7 @@ class OpenAIRealtimeService:
         websocket = self.active_websockets.pop(call_id, None)
         if websocket:
             print(f"Closing websocket for call_id {call_id} ...")
+            await connection_manager.close()
             await websocket.close()
         if connection:
             print(f"Closing client for call_id {call_id} ...")
