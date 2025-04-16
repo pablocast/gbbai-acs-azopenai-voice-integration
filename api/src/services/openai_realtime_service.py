@@ -11,26 +11,16 @@ from src.services.cache_service import CacheService
 from src.config.constants import OpenAIPrompts
 import random
 
-def session_config(sys_msg: str):
-    """Returns a random value from the predefined list."""
-    values = ["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse"]
-    ### for details on available param: https://platform.openai.com/docs/api-reference/realtime-sessions/create
-    SESSION_CONFIG={
-        "input_audio_transcription": {
-            "model": "whisper-1",
-        },
-        "turn_detection": {
-            "threshold": 0.4,
-            "silence_duration_ms": 600,
-            "type": "server_vad"
-        },
-        "instructions": sys_msg,
-        "voice": random.choice(values),
-        "modalities": ["text", "audio"] ## required to solicit the initial welcome message
-    }
-    return SESSION_CONFIG
+from mcp_client import OAI_RT_SSEMCPClient
+import logging
 
 class OpenAIRealtimeService:
+    mcp_config = {
+            # 'spotify': mcp_spotify,
+            'weather': "https://apim-ngetesa47edke.azure-api.net/weather/sse" #### TODO: Replace with a configuration item of MCP servers
+        }
+    mcp_servers = {}
+    tool_server_map = {}
     def __init__(self, config:Config, cache: CacheService):
         self.config = config
         self.cache_service = cache
@@ -38,6 +28,13 @@ class OpenAIRealtimeService:
         self.connection_managers = {}
         self.connections={}
         self.active_websockets = {}
+        if len(self.mcp_config) > 0:
+            # print ("initialising all MCPs")
+            for name, url in self.mcp_config.items():
+                self.mcp_servers[name] = OAI_RT_SSEMCPClient(server_name=name, url=url)
+        else:
+            # print ("no MCPs")
+            pass
     
     active_websocket = None
 
@@ -93,7 +90,8 @@ class OpenAIRealtimeService:
         self.clients[call_id] = client
         self.connection_managers[call_id] = connection_manager
         self.connections[call_id] = active_connection
-        await active_connection.session.update(session=session_config(sys_msg))
+        session_config = await self.session_config()
+        await active_connection.session.update(session=session_config)
         await active_connection.response.create()
         
         # maybe start by sending welcome message
@@ -111,6 +109,9 @@ class OpenAIRealtimeService:
                     if event is None:
                         continue
                     match event.type:
+                        case "response.function_call_arguments.done":
+                            print("Function Calling")
+                            await self.get_tool_response(event)
                         case "session.created":
                             print("Session Created Message")
                             print(f"  Session Id: {event.session.id}")
@@ -136,6 +137,16 @@ class OpenAIRealtimeService:
                             print(f"  Response Id: {event.response.id}")
                             if event.response.status_details:
                                 print(f"  Status Details: {event.response.status_details.model_dump_json()}")
+                                ###### Useful for error handling or communication interruptions
+                                if event.response.status_details.error is not None:
+                                    await self.connection.conversation.item.create(
+                                    item={
+                                        "type": "message",
+                                        "role": "user",
+                                        "content": [{"type": "input_text", "text": "Continue"}],
+                                        }
+                                    )
+                                    await self.connection.response.create()
                         case "response.audio_transcript.done":
                             print(f" AI:-- {event.transcript}")
                             if any(keyword in event.transcript.lower() for keyword in ["bye", "goodbye", "take care", "have a great day", "have a good day"]):
@@ -224,3 +235,42 @@ class OpenAIRealtimeService:
         if connection:
             print(f"Closing client for call_id {call_id} ...")
             await connection.close()
+
+    async def get_tool_response(self, event):
+        ### findout which MCP server to call
+        server_name = self.tool_server_map[event.name]
+        ### call the target
+        response = await self.mcp_servers[server_name].call_tool(tool_call=event.model_dump())
+        # print(response)
+        await self.connection.conversation.item.create(item=response)
+        await self.connection.response.create()
+
+    async def session_config(self, sys_msg: str):
+        """Returns a random value from the predefined list."""
+        values = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']
+        tools = []
+        ### Get all tools from all active servers
+        for name, server in self.mcp_servers.items():
+                current_server_tools = await server.list_tools()
+                for tool in current_server_tools:
+                    self.tool_server_map[tool['name']]= name
+                tools = tools + current_server_tools
+        print(self.tool_server_map)
+        voice = random.choice(values)
+        print(voice)
+        ### for details on available param: https://platform.openai.com/docs/api-reference/realtime-sessions/create
+        SESSION_CONFIG={
+            "input_audio_transcription": {
+                "model": "whisper-1",
+            },
+            "turn_detection": {
+                "threshold": 0.4,
+                "silence_duration_ms": 600,
+                "type": "server_vad"
+            },
+            "instructions": sys_msg,
+            "voice": voice,
+            "modalities": ["text", "audio"], ## required to solicit the initial welcome message
+            "tools": tools
+        }
+        return SESSION_CONFIG
