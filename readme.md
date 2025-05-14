@@ -22,22 +22,20 @@ The following Azure services and technologies are used in this project:
 8. **Azure Cosmos DB**: Stores call session data, including recordings and conversation history, for long-term storage.
 ---
 
-## Prerequisites 
-- **Azure Communication Services (ACS)** resource for PSTN calling.
-- **Azure Cognitive Services** for speech-to-text and text-to-speech processing.
-- **Azure OpenAI GPT-4** model deployment for generating responses.
-- **Azure Search** for querying job descriptions.
-- **Azure Maps** for geographic information.
-- **Redis** for caching job details and competency questions.
-- **Azure Cosmos DB** for session history and call recordings.
-- **Python 3.8+** installed on your local environment.
-- **Azure Tunnel** for handling ACS callback URLs when testing locally.
-- **Spacy** for entity extraction 
+## Prerequisites
+- **Azure Subscription** with access to Azure OpenAI models.  
+- **Python 3.10+** installed on your local environment.  
+- [Azure Dev Tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows) (or alternative) for handling ACS callback URLs if testing locally.  
+- [Terraform](https://learn.microsoft.com/pt-br/azure/developer/terraform/get-started-windows-bash) to deploy the IaC in the `automation` folder.
+- [azd](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), used to deploy all Azure resources and assets used in this sample.
+- **Install the Azure CLI Communication extension**
+```bash
+az extension add --name communication --yes
+```
 
 ---
 
 ## Setup and Installation
-
 ### 1. Clone the Repository
 
 ```bash
@@ -47,76 +45,71 @@ cd voice-assistant
 
 ### 2. Install Python Dependencies
 Create a virtual environment and install the required Python libraries listed in `requirements.txt`.
+
+#### Bash
 ```bash
-python3 -m venv venv
+python3 -m venv .venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-# Call Automation - Quick Start Sample
+#### PowerShell
+```powershell
+python3 -m venv .venv
+.venv/Scripts/Activate.ps1
+pip install -r api/requirements.txt
+```
 
-This is a sample application demonstrated during Microsoft Build 2023. It highlights an integration of Azure Communication Services with Azure OpenAI Service to enable intelligent conversational agents.
+### 3. Deploy the Terraform IaC
+> [!Note]
+> You need to have activated the venv and installed the requirements as the IaC automation contains python scripts that require specific libraries.
 
-## Prerequisites
+Navigate to for the details for the [Terraform automation deployment Doc](automation/README.md).
 
-- Create an Azure account with an active subscription. For details, see [Create an account for free](https://azure.microsoft.com/free/)
-- Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource](https://docs.microsoft.com/azure/communication-services/quickstarts/create-communication-resource). You'll need to record your resource **connection string** for this sample.
-- An Calling-enabled telephone number. [Get a phone number](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp).
-- Azure Dev Tunnels CLI. For details, see  [Enable dev tunnel](https://docs.tunnels.api.visualstudio.com/cli)
-- Create an Azure Cognitive Services resource. For details, see [Create an Azure Cognitive Services Resource](https://learn.microsoft.com/en-us/azure/cognitive-services/cognitive-services-apis-create-account)
-- Create and host a Azure Dev Tunnel. Instructions [here](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started)
-- [Python](https://www.python.org/downloads/) 3.7 or above.
+Make sure to follow the manual step of navigating inside the ACS resource and connecting it to the Cognitive Service (aka AI multiservices account) via Managed Identity. This process happens in the background when you do it from ACS. If this step is not done, the phone call will happen but it will hang up instantly.
 
-### Setup and host your Azure DevTunnel
+
+## Running it locally
+
+### 1. Add the Environment Variable values to a .env file
+Based on `.env.sample`, create and construct your `.env` file to allow your local app to access your Azure resource.
+
+### 2. Enable and run a Microsoft DevTunnel
+> [!NOTE]
+>- Azure Dev Tunnels CLI. For details, see  >[Enable dev tunnel](https://docs.tunnels.api.>visualstudio.com/cli)
+>- Create an Azure Cognitive Services resource. >For details, see [Create an Azure Cognitive >Services Resource](https://learn.microsoft.com/>en-us/azure/cognitive-services/>cognitive-services-apis-create-account)
+>- Create and host a Azure Dev Tunnel. > Instructions [here](https://learn.microsoft.com/>en-us/azure/developer/dev-tunnels/get-started)
 
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
 
+#### Running it for the first time:
+
 ```bash
+devtunnel login
 devtunnel create --allow-anonymous
-devtunnel port create -p 8080
+devtunnel port create -p 8000
 devtunnel host
 ```
+Add the devtunnel link structured as `https://<name>.devtunnels.ms:8080` to the `.env` file as callback URI host.
 
-### Deploy and set up the infrastructure
-
-> **Disclaimer:** The infrastructure and code provided is **not production-ready** and isn't fully dynamic. If having dynamic IaC is relevant for you, please review the templates and add modifications as needed. Additionally, some steps are left to be done manual due to the potential conflicts with Azure Policies implemented in your targeted tenant/subscription.
-
-Deploy the bicep template by navigating to the `infra` folder and running:
-```azcli
-az deployment group create --resource-group <name of your RG> --template-file main.bicep
+#### Leveragin a previously created DevTunnel:
+```bash
+devtunnel login
+devtunnel list
+# copy the name of the devtunnel you want to target
+devtunnel host <your devtunnel name> 
 ```
-Optionally, add the flag `--mode Complete` to avoid inconsistences when carrying out redeployments
+Then run the python app by running `python3 api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-Once deployed, proceed manually with the following:
-1. Navigate into the Event Grid System Topic created and add a subscription pointing to the Dev Tunnel url that was generated on the step above.
-2. Generate an index on Azure AI Search to have a vectorized data for the RAG feature of the model. Feel free to do it via the GUI or code, as preferred.
-3. Navigate into Az Communications Service (ACS) and [acquire a phone number by purchasing it on the portal or via code](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/telephony/get-phone-number?tabs=windows&pivots=platform-azp)
-4. Create a service principal for ACS within Azure App Registrations for permissions and access.
-5. Extract the necessary environment variables to run the app and add them onto the `.env` file.
+Once the tunnel is running, navigate to your Azure Event Grid System Topic resource and click on *+ Event Subscription*. Create a local subscription to your local app for the event `IncomingCall` as a webhook, with the URL `https://<your devtunnel name>.devtunnels.ms:8000/api/incomingCall`. Note that both the devtunnel and the python app should be running for this step to work.
 
+## Running it on Azure
+Once the IaC has been deployed, the web API should be ready to use. Feel free to configure the system message within constants.
 
+## Test the app with an outbound phone call
 
-### Configuring application
+Send an HTTP request to the web API following the sample on `outbound.http`. To make the request on VSCode, you can use the *Rest Client* extension and then, on the file, click on *Send Request* on top of the `POST` method.
 
-Open `main.py` file to configure the following settings
-
-1. - `CALLBACK_URI_HOST`: your dev tunnel endpoint
-2. - `COGNITIVE_SERVICE_ENDPOINT`: The Cognitive Services endpoint
-3. - `ACS_CONNECTION_STRING`: Azure Communication Service resource's connection string.
-4. - `AZURE_OPENAI_SERVICE_KEY`: Open AI's Service Key
-5. - `AZURE_OPENAI_SERVICE_ENDPOINT`: Open AI's Service Endpoint
-6. - `AZURE_OPENAI_DEPLOYMENT_MODEL_NAME`: Open AI's Model name
-6. - `AGENT_PHONE_NUMBER`: Agent Phone Number to transfer call
-
-## Run app locally
-
-1. Navigate to `callautomation-openai-sample` folder and run `main.py` in debug mode or use command `python ./main.py` to run it from PowerShell, Command Prompt or Unix Terminal
-2. Browser should pop up with the below page. If not navigate it to `http://localhost:8080/` or your dev tunnel url.
-3. Register an EventGrid Webhook for the IncomingCall Event that points to your DevTunnel URI. Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
-
-Once that's completed you should have a running application. The best way to test this is to place a call to your ACS phone number and talk to your intelligent agent.
-
-
-
+Make sure you send a payload that meets the requirements by leveraging the existing sample on the same file. The validation can be edited on `./api/src/core/app.py` within the `initiate_outbound_call()` function.
 
 
