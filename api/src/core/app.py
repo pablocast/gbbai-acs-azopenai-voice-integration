@@ -367,7 +367,85 @@ class CallAutomationApp:
                 response={"error": "Internal server error", "details": str(e)},
                 status=StatusCodes.SERVER_ERROR,
             )
-            
+
+    async def _process_event(self, event: CloudEvent, caller_id: str):
+        """Process different types of events"""
+        self.logger.info(f"Processing event type: {event.type}")
+        event_handlers = {
+            EventTypes.CALL_CONNECTED: self.event_handlers.handle_call_connected,
+            EventTypes.RECOGNIZE_COMPLETED: self.event_handlers.handle_recognize_completed,
+            EventTypes.PLAY_COMPLETED: self.event_handlers.handle_play_completed,
+            EventTypes.RECOGNIZE_FAILED: self.event_handlers.handle_recognize_failed,
+            EventTypes.CALL_DISCONNECTED: self.event_handlers.handle_call_disconnected,
+            EventTypes.PARTICIPANTS_UPDATED: self.event_handlers.handle_participants_updated,
+        }
+
+        handler = event_handlers.get(event.type)
+        if handler:
+            try:
+                await handler(event, caller_id)
+            except Exception as e:
+                self.logger.error(
+                    f"Error in event handler for {event.type}: {str(e)}", exc_info=True
+                )
+                raise
+        else:
+            self.logger.warning(f"No handler found for event type: {event.type}")
+
+    async def _answer_call_async(self, incoming_call_context, callback_url):
+        self.logger.info("_answer_call_async event")
+        # Directly assign without awaiting
+        return self.call_automation_client.answer_call(
+            incoming_call_context=incoming_call_context,
+            cognitive_services_endpoint=self.config.COGNITIVE_SERVICE_ENDPOINT,
+            callback_url=callback_url,
+        )
+
+    async def _process_incoming_call(self, event: EventGridEvent):
+        """Process incoming call event"""
+        self.logger.info("_process_incoming_call event")
+
+        try:
+            caller_id = self._extract_caller_id(event.data)
+            #session_id = self.cosmosdb_service.create_new_session(caller_id, event.data["callConnectionId"])
+
+            incoming_call_context = event.data["incomingCallContext"]
+            callback_uri = self._generate_callback_uri(caller_id)
+
+            # Call _answer_call_async and remove await
+            answer_call_result = await self._answer_call_async(
+                incoming_call_context, callback_uri
+            )
+
+            # Log the successful call connection
+            self.logger.info(
+                f"Answered call for connection id: {answer_call_result.call_connection_id}"
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error in _process_incoming_call: {str(e)}", exc_info=True
+            )
+            raise
+
+    def _extract_caller_id(self, event_data: dict) -> str:
+        """Extract caller ID from event data"""
+        if event_data["from"]["kind"] == "phoneNumber":
+            return event_data["from"]["phoneNumber"]["value"]
+        return event_data["from"]["rawId"]
+
+    def _generate_callback_uri(self, caller_id: str) -> str:
+        """Generate callback URI for the call"""
+        guid = uuid.uuid4()
+        query_parameters = urlencode({"callerId": caller_id})
+        return f"{self.config.CALLBACK_EVENTS_URI}/{guid}?{query_parameters}"
+
+    def _normalize_caller_id(self, caller_id: str) -> str:
+        """Normalize caller ID format"""
+        caller_id = caller_id.strip()
+        if "+" not in caller_id:
+            caller_id = "+" + caller_id
+        return caller_id   
             
     async def ws(self, call_id:str):
         """WebSocket handler"""

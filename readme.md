@@ -83,7 +83,6 @@ Based on `.env.sample`, create and construct your `.env` file to allow your loca
 [Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
 
 #### Running it for the first time:
-
 ```bash
 devtunnel login
 devtunnel create --allow-anonymous
@@ -101,7 +100,20 @@ devtunnel host <your devtunnel name>
 ```
 Then run the python app by running `python3 api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-Once the tunnel is running, navigate to your Azure Event Grid System Topic resource and click on *+ Event Subscription*. Create a local subscription to your local app for the event `IncomingCall` as a webhook, with the URL `https://<your devtunnel name>.devtunnels.ms:8000/api/incomingCall`. Note that both the devtunnel and the python app should be running for this step to work.
+### Register an EventGrid Webhook for the IncomingCall(`https://<your devtunnel name>/api/incomingCall`) event that points to your devtunnel URI. 
+Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
+  - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
+  - On the left menu bar click "Events."
+  - Click on "+Event Subscription."
+    - Provide a unique name for the event subscription details, for example, "IncomingCallWebhook"
+    - Leave the "Event Schema" as "Event Grid Schema"
+    - Provide a unique "System Topic Name"
+    - For the "Event Types" select "Incoming Call"
+    - For the "Endpoint Details" select "Webhook" from the drop down
+      - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<your devtunnel name>/api/incomingCall`.
+    - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
+
+
 
 ## Running it on Azure
 Once the IaC has been deployed, the web API should be ready to use. Feel free to configure the system message within constants.

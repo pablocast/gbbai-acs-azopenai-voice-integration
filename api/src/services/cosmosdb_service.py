@@ -2,13 +2,14 @@ from azure.cosmos import CosmosClient, PartitionKey
 from datetime import datetime
 import uuid
 from ..config.settings import Config
-
+from azure.identity import DefaultAzureCredential
 
 class CosmosDBService:
     """Service to handle CosmosDB operations for session and chat history storage."""
 
     def __init__(self, config: Config):
-        self.client = CosmosClient(config.COSMOS_DB_URL, config.COSMOS_DB_KEY)
+        credential = DefaultAzureCredential()
+        self.client = CosmosClient(config.COSMOS_DB_URL, credential=credential)
         self.database = self.client.create_database_if_not_exists(id=config.COSMOS_DB_DATABASE_NAME)
         self.container = self.database.create_container_if_not_exists(
             id=config.COSMOS_DB_CONTAINER_NAME,

@@ -70,8 +70,8 @@ module "api" {
     # Azure OpenAI
     AZURE_OPENAI_SERVICE_KEY           = azurerm_cognitive_account.openai.primary_access_key
     AZURE_OPENAI_SERVICE_ENDPOINT      = azurerm_cognitive_account.openai.endpoint
-    AZURE_OPENAI_DEPLOYMENT_MODEL_NAME = azurerm_cognitive_deployment.openai_deployments["gpt-4o"].model[0].name
-    AZURE_OPENAI_DEPLOYMENT_MODEL      = azurerm_cognitive_deployment.openai_deployments["gpt-4o"].model[0].name
+    AZURE_OPENAI_DEPLOYMENT_MODEL_NAME = azurerm_cognitive_deployment.openai_deployments["gpt-4o-realtime"].model[0].name
+    AZURE_OPENAI_DEPLOYMENT_MODEL      = azurerm_cognitive_deployment.openai_deployments["gpt-4o-realtime"].model[0].name
     # Application Settings
     CALLBACK_URI_HOST   = "https://${local.name_prefix}-api.azurewebsites.net"
     CALLBACK_EVENTS_URI = "https://${local.name_prefix}-api.azurewebsites.net/api/callbacks"

@@ -86,3 +86,8 @@ variable "log_analytics_retention_days" {
   type        = number
   default     = 30
 }
+
+variable "principal_object_id" {
+  description = "The object ID of the principal to assign Cosmos DB permissions to"
+  type        = string
+}

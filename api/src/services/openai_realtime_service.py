@@ -11,7 +11,7 @@ from src.services.cache_service import CacheService
 from src.config.constants import OpenAIPrompts
 import random
 
-from mcp_client import OAI_RT_SSEMCPClient
+from .mcp_client import OAI_RT_SSEMCPClient
 import logging
 
 class OpenAIRealtimeService:

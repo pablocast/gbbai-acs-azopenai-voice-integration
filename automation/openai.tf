@@ -16,27 +16,27 @@ variable "openai_deployments" {
   }))
   default = [
     {
-      name = "gpt-4o"
+      name = "gpt-4o-realtime"
       model = {
         format  = "OpenAI"
-        name    = "gpt-4o"
-        version = "2024-08-06"
+        name    = "gpt-4o-realtime-preview"
+        version = "2024-12-17"
       }
       sku = {
         name     = "GlobalStandard"
-        capacity = 10
+        capacity = 6
       }
     },
     {
-      name = "text-embedding-ada-002"
+      name = "text-embedding-3-large"
       model = {
         format  = "OpenAI"
-        name    = "text-embedding-ada-002"
-        version = "2"
+        name    = "text-embedding-3-large"
+        version = "1"
       }
       sku = {
-        name     = "Standard"
-        capacity = 10
+        name     = "GlobalStandard"
+        capacity = 350
       }
     }
   ]

@@ -35,8 +35,8 @@ Before you start, ensure you have:
 ### Creating Azure Storage for Terraform State
 ```bash
 az group create --name terraform --location eastus
-az storage account create --name terraform9999 --resource-group terraform --sku Standard_LRS
-az storage container create --name tfstate --account-name terraform9999
+az storage account create --name terraform<your-prefix> --resource-group terraform --sku Standard_LRS
+az storage container create --name tfstate --account-name terraform<your-prefix>
 ```
 
 ### Configuring Terraform Backend
@@ -45,7 +45,7 @@ Update `backend.tf` as needed:
 terraform {
   backend "azurerm" {
     resource_group_name  = "terraform"
-    storage_account_name = "terraform9999"
+    storage_account_name = "terraform<your-unique-prefix>"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
     use_azuread_auth     = true
@@ -72,6 +72,7 @@ terraform {
 
 4. **Apply the Configuration:**
    ```bash
+   export TF_VAR_principal_object_id=$(az ad signed-in-user show --query objectId -o tsv)
    terraform apply -auto-approve
    ```
 
