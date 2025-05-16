@@ -1,115 +1,147 @@
-from abc import ABC, abstractmethod
+import re
+from typing import Any
 import json
+from azure.core.credentials import AzureKeyCredential
+from azure.identity import DefaultAzureCredential
+from azure.search.documents.aio import SearchClient
+from azure.search.documents.models import VectorizableTextQuery
+from datetime import date
+import os
+from datetime import timedelta
+import random
+
+_search_tool_schema = {
+    "type": "function",
+    "name": "search",
+    "description": "Search the knowledge base. The knowledge base is in Spanish, translate to and from Spanish if "
+    + "needed. Results are formatted as a source name first in square brackets, followed by the text "
+    + "content, and a line with '-----' at the end of each result.",
+    "parameters": {
+        "type": "object",
+        "properties": {"query": {"type": "string", "description": "Search query"}},
+        "required": ["query"],
+        "additionalProperties": False,
+    },
+}
+
+_report_grounding_tool_schema = {
+    "type": "function",
+    "name": "report_grounding",
+    "description": "Report use of a source from the knowledge base as part of an answer (effectively, cite the source). Sources "
+    + "appear in square brackets before each knowledge base passage. Always use this tool to cite sources when responding "
+    + "with information from the knowledge base.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "sources": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of source names from last statement actually used, do not include the ones not used to formulate a response",
+            }
+        },
+        "required": ["sources"],
+        "additionalProperties": False,
+    },
+}
+
+_inform_loan_tool_schema = {
+    "type": "function",
+    "name": "inform_loan",
+    "description": "Inform bank customers about their loan information including status, amount, and other details. Respond with clear and concise details about the customer's loan.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "customer_id": {
+                "type": "string",
+                "description": "The unique identifier for the bank customer",
+            }
+        },
+        "required": ["customer_id", "query"],
+        "additionalProperties": False,
+    },
+}
+
+async def _search_tool(
+    search_client: SearchClient,
+    semantic_configuration: str | None,
+    identifier_field: str,
+    content_field: str,
+    embedding_field: str,
+    use_vector_query: bool,
+    args: Any,
+) -> str:
+    print(f"Searching for '{args['query']}' in the knowledge base.")
+    # Hybrid query using Azure AI Search with (optional) Semantic Ranker
+    vector_queries = []
+    if use_vector_query:
+        vector_queries.append(
+            VectorizableTextQuery(
+                text=args["query"], k_nearest_neighbors=50, fields=embedding_field
+            )
+        )
+    search_results = await search_client.search(
+        search_text=args["query"],
+        query_type="semantic" if semantic_configuration else "simple",
+        semantic_configuration_name=semantic_configuration,
+        top=5,
+        vector_queries=vector_queries,
+        select=", ".join([identifier_field, content_field]),
+    )
+    result = ""
+    async for r in search_results:
+        result += f"[{r[identifier_field]}]: {r[content_field]}\n-----\n"
+    return result
 
 
-class OpenAIToolBase(ABC):
-    """
-    Abstract base class for tools used with OpenAI function calling.
-    """
+KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_=\-]+$")
 
-    def __init__(self, name: str, description: str, **kwargs):
-        """
-        Initialize the tool with its name, description, and optional parameters.
+async def _report_grounding_tool(
+    search_client: SearchClient,
+    identifier_field: str,
+    title_field: str,
+    content_field: str,
+    args: Any,
+) -> str:
+    sources = [s for s in args["sources"] if KEY_PATTERN.match(s)]
+    list = " OR ".join(sources)
+    print(f"Grounding source: {list}")
+    # Use search instead of filter to align with how detailt integrated vectorization indexes
+    # are generated, where chunk_id is searchable with a keyword tokenizer, not filterable
+    search_results = await search_client.search(
+        search_text=list,
+        search_fields=[identifier_field],
+        select=[identifier_field, title_field, content_field],
+        top=len(sources),
+        query_type="full",
+    )
 
-        :param name: The name of the tool.
-        :param description: A brief description of the tool's functionality.
-        :param kwargs: Optional parameters for configuring the tool.
-        """
-        self.name = name
-        self.description = description
-        self.config = kwargs
+    # If your index has a key field that's filterable but not searchable and with the keyword analyzer, you can
+    # use a filter instead (and you can remove the regex check above, just ensure you escape single quotes)
+    # search_results = await search_client.search(filter=f"search.in(chunk_id, '{list}')", select=["chunk_id", "title", "chunk"])
 
-    @abstractmethod
-    def run(self, *args, **kwargs):
-        """
-        Execute the tool's functionality. Derived classes must implement this.
-
-        :param args: Positional arguments for the tool's logic.
-        :param kwargs: Keyword arguments for the tool's logic.
-        :return: The result of the tool's execution.
-        """
-        pass
-
-    def to_json(self):
-        """
-        Convert the tool's metadata and callable structure into JSON format
-        for OpenAI function calling.
-
-        :return: A JSON-compatible dictionary representing the tool.
-        """
-        tool_dict = {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.get_parameters(),
-            },
-        }
-        return json.dumps(tool_dict)
-
-    @abstractmethod
-    def get_parameters(self):
-        """
-        Return the expected parameters for the tool as a dictionary.
-        Derived classes must implement this method.
-
-        :return: A dictionary describing the tool's parameters.
-        """
-        pass
-
-    def handle_error(self, error: Exception):
-        """
-        Handle errors that occur during the tool's execution.
-
-        :param error: The exception instance.
-        :return: A standardized error message or response.
-        """
-        # Log the error (extend this with proper logging as needed)
-        print(f"Error in tool '{self.name}': {error}")
-
-        # Return a generic error response
-        return {"error": str(error), "tool": self.name}
+    docs = []
+    async for r in search_results:
+        docs.append(
+            {
+                "chunk_id": r[identifier_field],
+                "title": r[title_field],
+                "chunk": r[content_field],
+            }
+        )
+    return json.dumps({"sources": docs})
 
 
-# Example derived tool
-class ExampleTool(OpenAIToolBase):
-    """
-    Example implementation of a tool based on OpenAIToolBase.
-    """
-
-    def run(self, input_data: str):
-        """
-        Perform a mock operation.
-
-        :param input_data: Some input to process.
-        :return: Processed output.
-        """
-        try:
-            # Example logic
-            result = f"Processed: {input_data}"
-            return {"result": result}
-        except Exception as e:
-            return self.handle_error(e)
-
-    def get_parameters(self):
-        """
-        Define the expected parameters for this tool.
-
-        :return: A dictionary describing parameters.
-        """
-        return {
-            "type": "object",
-            "properties": {
-                "input_data": {
-                    "type": "string",
-                    "description": "The input data to process.",
-                }
-            },
-            "required": ["input_data"],
-        }
-
-
-# Example usage
-tool = ExampleTool(name="example_tool", description="A mock tool for demonstration.")
-print(tool.to_json())
-print(tool.run("Hello, OpenAI!"))
+# Function to inform bank customers about their loan. Randomly generated for demo purposes.
+async def _inform_loan_tool(args: Any) -> str:
+    customer_id = args["customer_id"]
+    # Simulate fetching loan information from a database or service
+    random_days = random.randint(1, 5)
+    next_payment_date = (date.today() + timedelta(days=random_days)).isoformat()
+    loan_info = {
+        "customer_id": customer_id,
+        "status": "active",
+        "due_amount": 1500.75,
+        "interest_rate": 3.5,
+        "next_payment_date": next_payment_date,
+    }
+    return json.dumps(loan_info)

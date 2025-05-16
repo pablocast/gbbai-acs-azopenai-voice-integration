@@ -7,11 +7,30 @@ from rtclient import (
     SessionUpdateParams,
     InputAudioBufferAppendMessage,
     InputAudioTranscription,
+    ItemCreateMessage
 )
 from azure.core.credentials import AzureKeyCredential
+from src.tools.tool_base import (
+    _search_tool_schema,
+    _report_grounding_tool_schema,
+    _inform_loan_tool_schema,
+    _search_tool,
+    _report_grounding_tool,
+    _inform_loan_tool,
+)
+
+tools_schema = [_search_tool_schema, _report_grounding_tool_schema, _inform_loan_tool_schema]
+tools = { "search": _search_tool, "report_grounding": _report_grounding_tool, "inform_loan": _inform_loan_tool}
 
 active_websocket = None
 
+class RTToolCall:
+    tool_call_id: str
+    previous_id: str
+
+    def __init__(self, tool_call_id: str, previous_id: str):
+        self.tool_call_id = tool_call_id
+        self.previous_id = previous_id
 
 async def start_conversation(
     instructions: str,
@@ -35,6 +54,7 @@ async def start_conversation(
                 input_audio_format="pcm16",
                 output_audio_format="pcm16",
                 input_audio_transcription=InputAudioTranscription(model="whisper-1"),
+                tools=tools_schema
             )
         )
     )
@@ -49,10 +69,11 @@ async def send_audio_to_external_ai(audioData: str):
         )
     )
 
-
 async def receive_messages(client: RTLowLevelClient):
+    _tools_pending = {}
     while not client.closed:
         message = await client.recv()
+        updated_message = message
         if message is None:
             continue
         match message.type:
@@ -90,6 +111,57 @@ async def receive_messages(client: RTLowLevelClient):
             case "response.audio.delta":
                 await receive_audio_for_outbound(message.delta)
                 pass
+            case "function_call":
+                print(f"Function Call Message: {message}")
+                # Store the original call_id from the function call
+                call_id = message.call_id
+                pass
+            case "response.function_call_arguments.done":
+                print(f"Message: {message}")
+                function_name = message.name
+                args = json.loads(message.arguments)
+                # Use the call_id from the original function call
+                call_id = message.call_id
+                
+                print(f"Function args: {message.arguments}")
+                try:
+                    tool = tools[function_name]
+                    result = await tool(args)
+                    print(f"Function result: {result}")
+                    
+                    await client.ws.send_json(
+                        {
+                            "type":"conversation.item.create",
+                            "item": {
+                                "type": "function_call_output",
+                                "output": f"Here are the results: {result}",
+                                "call_id": call_id  
+                            }
+                        }
+                    )
+ 
+                    await client.ws.send_json(
+                            {
+                                "type": "response.create",
+                                "response": {
+                                    "modalities": ["text", "audio"],
+                                    "instructions": f"Respond to the user that you found named {result}. Be concise and friendly."
+                                }
+                            }
+                    )
+
+                except Exception as e:
+                    print(f"Error calling function {function_name}: {e}")
+                    await client.ws.send_json(
+                            {
+                                "type": "response.create",
+                                "response": {
+                                    "modalities": ["text", "audio"],
+                                    "instructions": f"Respond to the user that you didn't find any results. Be concise and friendly."
+                                }
+                            }
+
+                    )
             case _:
                 pass
 
