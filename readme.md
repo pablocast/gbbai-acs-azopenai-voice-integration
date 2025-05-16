@@ -37,10 +37,9 @@ az extension add --name communication --yes
 
 ## Setup and Installation
 ### 1. Clone the Repository
-
 ```bash
-git clone https://github.com/your-repository-name/voice-assistant
-cd voice-assistant
+git clone https://github.com/pablocast/gbbai-acs-azopenai-voice-integration.git
+cd gbbai-acs-azopenai-voice-integration
 ```
 
 ### 2. Install Python Dependencies
@@ -59,7 +58,7 @@ pip install api/rtclient-0.5.1-py3-none-any.whl
 python3 -m venv .venv
 .venv/Scripts/Activate.ps1
 pip install -r api/requirements.txt
-pip install api/rtclient-0.5.1-py3-none-any.whl
+pip install api/api/rtclient-0.5.3-py3-none-any.whl
 ```
 
 ### 3. Deploy the Terraform IaC
@@ -77,13 +76,6 @@ Make sure to follow the manual step of navigating inside the ACS resource and co
 Based on `.env.sample`, create and construct your `.env` file to allow your local app to access your Azure resource.
 
 ### 2. Enable and run a Microsoft DevTunnel
-> [!NOTE]
->- Azure Dev Tunnels CLI. For details, see  >[Enable dev tunnel](https://docs.tunnels.api.>visualstudio.com/cli)
->- Create an Azure Cognitive Services resource. >For details, see [Create an Azure Cognitive >Services Resource](https://learn.microsoft.com/>en-us/azure/cognitive-services/>cognitive-services-apis-create-account)
->- Create and host a Azure Dev Tunnel. > Instructions [here](https://learn.microsoft.com/>en-us/azure/developer/dev-tunnels/get-started)
-
-[Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
-
 #### Running it for the first time:
 ```bash
 devtunnel login
@@ -91,6 +83,7 @@ devtunnel create --allow-anonymous
 devtunnel port create -p 8000
 devtunnel host
 ```
+
 Add the devtunnel link structured as `https://<name>.devtunnels.ms:8080` to the `.env` file as callback URI host.
 
 #### Leveragin a previously created DevTunnel:
@@ -100,9 +93,10 @@ devtunnel list
 # copy the name of the devtunnel you want to target
 devtunnel host <your devtunnel name> 
 ```
-Then run the python app by running `python3 api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-### Register an EventGrid Webhook for the IncomingCall(`https://<your devtunnel name>/api/incomingCall`) event that points to your devtunnel URI. 
+Then run the python app by running `python api/main.py` on your terminal and check that it runs with no issues before proceeding.
+
+### 3. Register an EventGrid Webhook for the IncomingCall(`https://<your devtunnel name>/api/incomingCall`) event that points to your devtunnel URI. 
 Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
   - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
   - On the left menu bar click "Events."
@@ -115,14 +109,14 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
       - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<your devtunnel name>/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
 
+#### 4. Run the App
+```bash
+python api/main.py
+```
 
 ## Running it on Azure
 Once the IaC has been deployed, the web API should be ready to use. Feel free to configure the system message within constants.
 
-## Test the app with an outbound phone call
 
-Send an HTTP request to the web API following the sample on `outbound.http`. To make the request on VSCode, you can use the *Rest Client* extension and then, on the file, click on *Send Request* on top of the `POST` method.
-
-Make sure you send a payload that meets the requirements by leveraging the existing sample on the same file. The validation can be edited on `./api/src/core/app.py` within the `initiate_outbound_call()` function.
 
 
