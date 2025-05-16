@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class AgentPersonaType(Enum):
     """
     Enum for the different types of agent personas.
@@ -9,6 +10,7 @@ class AgentPersonaType(Enum):
     - CLOSURE: Handles the end of the interview
     - GENERAL: general agent persona for E2E call, but less performant.
     """
+
     INTRO = "intro"
     INTERVIEW = "interview"
     CLOSURE = "closure"

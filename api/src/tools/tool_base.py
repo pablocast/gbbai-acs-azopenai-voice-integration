@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 
+
 class OpenAIToolBase(ABC):
     """
     Abstract base class for tools used with OpenAI function calling.
@@ -41,8 +42,8 @@ class OpenAIToolBase(ABC):
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self.get_parameters()
-            }
+                "parameters": self.get_parameters(),
+            },
         }
         return json.dumps(tool_dict)
 
@@ -67,10 +68,8 @@ class OpenAIToolBase(ABC):
         print(f"Error in tool '{self.name}': {error}")
 
         # Return a generic error response
-        return {
-            "error": str(error),
-            "tool": self.name
-        }
+        return {"error": str(error), "tool": self.name}
+
 
 # Example derived tool
 class ExampleTool(OpenAIToolBase):
@@ -103,11 +102,12 @@ class ExampleTool(OpenAIToolBase):
             "properties": {
                 "input_data": {
                     "type": "string",
-                    "description": "The input data to process."
+                    "description": "The input data to process.",
                 }
             },
-            "required": ["input_data"]
+            "required": ["input_data"],
         }
+
 
 # Example usage
 tool = ExampleTool(name="example_tool", description="A mock tool for demonstration.")

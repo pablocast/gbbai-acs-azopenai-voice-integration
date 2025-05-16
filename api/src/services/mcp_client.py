@@ -1,6 +1,7 @@
 """
 Core client functionality for Dolphin MCP.
 """
+
 import logging
 
 from mcp.client.sse import sse_client
@@ -45,7 +46,7 @@ class SSEMCPClient:
                 {
                     "name": tool.name,
                     "description": tool.description,
-                    "inputSchema": tool.inputSchema
+                    "inputSchema": tool.inputSchema,
                 }
                 for tool in response.tools
             ]
@@ -59,7 +60,9 @@ class SSEMCPClient:
             return {"error": "Not connected"}
         try:
             response = await self.session.call_tool(tool_name, arguments)
-            return response.model_dump() if hasattr(response, 'model_dump') else response
+            return (
+                response.model_dump() if hasattr(response, "model_dump") else response
+            )
         except Exception as e:
             logger.error(f"Server {self.server_name}: Tool call error: {str(e)}")
             return {"error": str(e)}
@@ -69,6 +72,7 @@ class SSEMCPClient:
             await self._session_context.__aexit__(None, None, None)
         if self._streams_context:
             await self._streams_context.__aexit__(None, None, None)
+
 
 class OAI_RT_SSEMCPClient(SSEMCPClient):
     def __exit__(self, exc_type, exc_value, traceback):
@@ -84,11 +88,11 @@ class OAI_RT_SSEMCPClient(SSEMCPClient):
                     "type": "function",
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.inputSchema
+                    "parameters": tool.inputSchema,
                 }
                 for tool in response.tools
             ]
-            #print(self.tools)
+            # print(self.tools)
             return self.tools
         except Exception as e:
             logger.error(f"Server {self.server_name}: List tools error: {str(e)}")
@@ -99,14 +103,16 @@ class OAI_RT_SSEMCPClient(SSEMCPClient):
             return {"error": "Not connected"}
         try:
             print(tool_call)
-            response = await self.session.call_tool(tool_call['name'], ast.literal_eval(tool_call['arguments']))
+            response = await self.session.call_tool(
+                tool_call["name"], ast.literal_eval(tool_call["arguments"])
+            )
             print(response.model_dump_json())
             oai_response = {
-                        "call_id": tool_call['call_id'],
-                        "type": "function_call_output",
-                        "output": response.model_dump()['content'][0]['text'],
-                    }
-            #print(oai_response)
+                "call_id": tool_call["call_id"],
+                "type": "function_call_output",
+                "output": response.model_dump()["content"][0]["text"],
+            }
+            # print(oai_response)
             return oai_response
         except Exception as e:
             logger.error(f"Server {self.server_name}: Tool call error: {str(e)}")

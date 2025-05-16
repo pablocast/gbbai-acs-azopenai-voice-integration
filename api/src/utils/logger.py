@@ -3,8 +3,10 @@ import sys
 from logging.handlers import RotatingFileHandler
 import os
 
+
 class CustomFormatter(logging.Formatter):
     """Custom formatter with colors for different log levels"""
+
     grey = "\x1b[38;21m"
     blue = "\x1b[38;5;39m"
     yellow = "\x1b[38;5;226m"
@@ -22,13 +24,14 @@ class CustomFormatter(logging.Formatter):
         logging.INFO: blue + format + reset,
         logging.WARNING: yellow + format + reset,
         logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        logging.CRITICAL: bold_red + format + reset,
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
+
 
 def setup_logger(name: str) -> logging.Logger:
     """Set up logger with both file and console handlers"""
@@ -42,14 +45,12 @@ def setup_logger(name: str) -> logging.Logger:
 
     # File handler
     file_handler = RotatingFileHandler(
-        os.path.join(logs_dir, "app.log"),
-        maxBytes=10485760,  # 10MB
-        backupCount=5
+        os.path.join(logs_dir, "app.log"), maxBytes=10485760, backupCount=5  # 10MB
     )
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)

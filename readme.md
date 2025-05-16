@@ -51,6 +51,7 @@ Create a virtual environment and install the required Python libraries listed in
 python3 -m venv .venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install api/rtclient-0.5.1-py3-none-any.whl
 ```
 
 #### PowerShell
@@ -58,6 +59,7 @@ pip install -r requirements.txt
 python3 -m venv .venv
 .venv/Scripts/Activate.ps1
 pip install -r api/requirements.txt
+pip install api/rtclient-0.5.1-py3-none-any.whl
 ```
 
 ### 3. Deploy the Terraform IaC
@@ -112,7 +114,6 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
     - For the "Endpoint Details" select "Webhook" from the drop down
       - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<your devtunnel name>/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
-
 
 
 ## Running it on Azure

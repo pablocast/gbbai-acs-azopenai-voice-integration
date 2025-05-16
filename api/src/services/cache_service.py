@@ -4,11 +4,12 @@ from typing import Any, Optional
 from ..utils.logger import setup_logger
 import json
 
+
 class CacheService:
     def __init__(self, redis_url: str, password: str):
         self.redis = redis.Redis(host=redis_url, port=6380, password=password, ssl=True)
         # Initialize logger
-        self.logger = setup_logger(__name__) 
+        self.logger = setup_logger(__name__)
 
     async def get(self, key: str) -> Optional[Any]:
         try:
@@ -17,7 +18,9 @@ class CacheService:
                 return json.loads(value)
             return None
         except Exception as e:
-            self.logger.error(f"Error getting key '{key}' from Redis: {e}", exc_info=True)
+            self.logger.error(
+                f"Error getting key '{key}' from Redis: {e}", exc_info=True
+            )
             return None
 
     async def set(self, key: str, value: Any, expire: int = None) -> None:
@@ -33,7 +36,9 @@ class CacheService:
             await self.redis.delete(key)
             self.logger.debug(f"Deleted key '{key}' from Redis.")
         except Exception as e:
-            self.logger.error(f"Error deleting key '{key}' from Redis: {e}", exc_info=True)
+            self.logger.error(
+                f"Error deleting key '{key}' from Redis: {e}", exc_info=True
+            )
 
     async def delete_by_pattern(self, pattern: str) -> None:
         """Delete all keys matching a given pattern."""
@@ -44,7 +49,9 @@ class CacheService:
                 self.logger.debug(f"Deleted key '{key}'")
             self.logger.info(f"Deleted keys matching pattern '{pattern}'")
         except Exception as e:
-            self.logger.error(f"Error deleting keys matching pattern '{pattern}': {e}", exc_info=True)
+            self.logger.error(
+                f"Error deleting keys matching pattern '{pattern}': {e}", exc_info=True
+            )
 
     async def clear(self) -> None:
         try:
