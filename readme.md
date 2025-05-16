@@ -1,4 +1,4 @@
-# Recruitment Voice Assistant 
+# <img src="./utils/media/azure_logo.png" alt="Call Center Voice Assistant" style="width:30px;height:30px;"/> Call Center Voice Assistant 
 
 ## Features
 - **PSTN Calling**: Users can call a phone number, and the voice assistant will interact with them using speech-to-text and text-to-speech capabilities.
