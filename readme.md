@@ -96,7 +96,7 @@ devtunnel host <your devtunnel name>
 
 Then run the python app by running `python api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-### 3. Register an EventGrid Webhook for the IncomingCall(`https://<your devtunnel name>/api/incomingCall`) event that points to your devtunnel URI. 
+### 3. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<your devtunnel name>/api/incomingCall`)
 Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
   - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
   - On the left menu bar click "Events."
