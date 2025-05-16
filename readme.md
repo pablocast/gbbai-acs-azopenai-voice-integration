@@ -86,7 +86,7 @@ devtunnel host
 
 Add the devtunnel link structured as `https://<name>.devtunnels.ms:8080` to the `.env` file as callback URI host.
 
-#### Leveragin a previously created DevTunnel:
+#### Leveraging a previously created DevTunnel:
 ```bash
 devtunnel login
 devtunnel list
