@@ -23,10 +23,19 @@ from src.tools.tool_base import (
 )
 import uuid
 
-tools_schema = [_search_tool_schema, _report_grounding_tool_schema, _inform_loan_tool_schema]
-tools = { "search": _search_tool, "report_grounding": _report_grounding_tool, "inform_loan": _inform_loan_tool}
+tools_schema = [
+    _search_tool_schema,
+    _report_grounding_tool_schema,
+    _inform_loan_tool_schema,
+]
+tools = {
+    "search": _search_tool,
+    "report_grounding": _report_grounding_tool,
+    "inform_loan": _inform_loan_tool,
+}
 
 active_websocket = None
+
 
 class RTToolCall:
     tool_call_id: str
@@ -35,6 +44,7 @@ class RTToolCall:
     def __init__(self, tool_call_id: str, previous_id: str):
         self.tool_call_id = tool_call_id
         self.previous_id = previous_id
+
 
 async def start_conversation(
     greeting: str,
@@ -55,46 +65,40 @@ async def start_conversation(
         SessionUpdateMessage(
             session=SessionUpdateParams(
                 instructions=instructions,
-                turn_detection=ServerVAD(type="server_vad", prefix_padding_ms=300, silence_duration_ms=800, threshold=0.4),
+                turn_detection=ServerVAD(
+                    type="server_vad",
+                    prefix_padding_ms=300,
+                    silence_duration_ms=800,
+                    threshold=0.4,
+                ),
                 voice="shimmer",
                 input_audio_format="pcm16",
                 output_audio_format="pcm16",
                 input_audio_transcription=InputAudioTranscription(model="whisper-1"),
-                tools=tools_schema
+                tools=tools_schema,
             )
         )
     )
 
     # Start receiving messages from the server
-    conversation_call_id = str(uuid.uuid4())
-    content_part = InputTextContentPart(
-            text=greeting,
-        )
-    
-    initial_conversation_item = ItemCreateMessage(
-        item=UserMessageItem(content=[content_part]),
-        call_id=conversation_call_id
+    await client.ws.send_json(
+        {
+            "type": "conversation.item.create",
+            "item": {
+                "type": "message",
+                "role": "user",
+                "content": [{
+                    "type": "input_text",
+                    "text": f"Greet the user with {greeting}",
+                }],
+            },
+        }
     )
 
     await client.ws.send_json(
-                        {
-                            "type":"conversation.item.create",
-                            "item": {
-                                "role": "system",
-                                "type": "message",
-                                "content": [{"type": "input_text", "text": greeting}]
-                        }
-                        }
-                    )
- 
-    await client.ws.send_json(
-            {
-                "type": "response.create",
-                "response": {
-                    "modalities": ["text", "audio"],
-                    "instructions": f"Greet the user with '{greeting}' and ask them how you can help. Be concise and friendly.",
-                }
-            }
+        {
+            "type": "response.create",
+        }
     )
 
     asyncio.create_task(receive_messages(client))
@@ -106,6 +110,7 @@ async def send_audio_to_external_ai(audioData: str):
             type="input_audio_buffer.append", audio=audioData, _is_azure=True
         )
     )
+
 
 async def receive_messages(client: RTLowLevelClient):
     _tools_pending = {}
@@ -160,45 +165,44 @@ async def receive_messages(client: RTLowLevelClient):
                 args = json.loads(message.arguments)
                 # Use the call_id from the original function call
                 call_id = message.call_id
-                
+
                 print(f"Function args: {message.arguments}")
                 try:
                     tool = tools[function_name]
                     result = await tool(args)
                     print(f"Function result: {result}")
-                    
+
                     await client.ws.send_json(
                         {
-                            "type":"conversation.item.create",
+                            "type": "conversation.item.create",
                             "item": {
                                 "type": "function_call_output",
                                 "output": f"Here are the results: {result}",
-                                "call_id": call_id  
-                            }
+                                "call_id": call_id,
+                            },
                         }
                     )
- 
+
                     await client.ws.send_json(
-                            {
-                                "type": "response.create",
-                                "response": {
-                                    "modalities": ["text", "audio"],
-                                    "instructions": f"Respond to the user that you found {result}. Be concise and friendly."
-                                }
-                            }
+                        {
+                            "type": "response.create",
+                            "response": {
+                                "modalities": ["text", "audio"],
+                                "instructions": f"Respond to the user that you found {result}. Be concise and friendly.",
+                            },
+                        }
                     )
 
                 except Exception as e:
                     print(f"Error calling function {function_name}: {e}")
                     await client.ws.send_json(
-                            {
-                                "type": "response.create",
-                                "response": {
-                                    "modalities": ["text", "audio"],
-                                    "instructions": f"Respond to the user that you didn't find any results. Be concise and friendly."
-                                }
-                            }
-
+                        {
+                            "type": "response.create",
+                            "response": {
+                                "modalities": ["text", "audio"],
+                                "instructions": f"Respond to the user that you didn't find any results. Be concise and friendly.",
+                            },
+                        }
                     )
             case _:
                 pass
