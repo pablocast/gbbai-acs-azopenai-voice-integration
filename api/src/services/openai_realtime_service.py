@@ -7,7 +7,10 @@ from rtclient import (
     SessionUpdateParams,
     InputAudioBufferAppendMessage,
     InputAudioTranscription,
-    ItemCreateMessage
+    ItemCreateMessage,
+    ResponseCreateMessage,
+    UserMessageItem,
+    InputTextContentPart,
 )
 from azure.core.credentials import AzureKeyCredential
 from src.tools.tool_base import (
@@ -18,6 +21,7 @@ from src.tools.tool_base import (
     _report_grounding_tool,
     _inform_loan_tool,
 )
+import uuid
 
 tools_schema = [_search_tool_schema, _report_grounding_tool_schema, _inform_loan_tool_schema]
 tools = { "search": _search_tool, "report_grounding": _report_grounding_tool, "inform_loan": _inform_loan_tool}
@@ -33,12 +37,14 @@ class RTToolCall:
         self.previous_id = previous_id
 
 async def start_conversation(
+    greeting: str,
     instructions: str,
     azure_openai_service_endpoint: str,
     azure_openai_service_key: str,
     azure_openai_deployment_model_name: str,
 ):
     global client
+    global conversation_call_id
     client = RTLowLevelClient(
         url=azure_openai_service_endpoint,
         key_credential=AzureKeyCredential(azure_openai_service_key),
@@ -57,6 +63,38 @@ async def start_conversation(
                 tools=tools_schema
             )
         )
+    )
+
+    # Start receiving messages from the server
+    conversation_call_id = str(uuid.uuid4())
+    content_part = InputTextContentPart(
+            text=greeting,
+        )
+    
+    initial_conversation_item = ItemCreateMessage(
+        item=UserMessageItem(content=[content_part]),
+        call_id=conversation_call_id
+    )
+
+    await client.ws.send_json(
+                        {
+                            "type":"conversation.item.create",
+                            "item": {
+                                "role": "system",
+                                "type": "message",
+                                "text": greeting
+                        }
+                        }
+                    )
+ 
+    await client.ws.send_json(
+            {
+                "type": "response.create",
+                "response": {
+                    "modalities": ["text", "audio"],
+                    "instructions": f"Greet the user with '{greeting}' and ask them how you can help. Be concise and friendly.",
+                }
+            }
     )
 
     asyncio.create_task(receive_messages(client))
@@ -145,7 +183,7 @@ async def receive_messages(client: RTLowLevelClient):
                                 "type": "response.create",
                                 "response": {
                                     "modalities": ["text", "audio"],
-                                    "instructions": f"Respond to the user that you found named {result}. Be concise and friendly."
+                                    "instructions": f"Respond to the user that you found {result}. Be concise and friendly."
                                 }
                             }
                     )
