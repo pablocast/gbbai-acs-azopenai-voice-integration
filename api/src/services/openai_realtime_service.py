@@ -82,7 +82,7 @@ async def start_conversation(
                             "item": {
                                 "role": "system",
                                 "type": "message",
-                                "text": greeting
+                                "content": greeting
                         }
                         }
                     )
