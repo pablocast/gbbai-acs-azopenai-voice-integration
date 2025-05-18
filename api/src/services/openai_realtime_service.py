@@ -82,7 +82,7 @@ async def start_conversation(
                             "item": {
                                 "role": "system",
                                 "type": "message",
-                                "content": greeting
+                                "content": [{"type": "input_text", "text": greeting}]
                         }
                         }
                     )
