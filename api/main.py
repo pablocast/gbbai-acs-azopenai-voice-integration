@@ -54,6 +54,7 @@ instruction_template = JINJA_ENV.get_template("instructions.jinja")
 instructions = instruction_template.render(
     current_date=datetime.now().strftime("%Y-%m-%d"),
     functions=["search", "report_grounding", "inform_loan"],
+    grounding_function=["report_grounding"],
 )
 greeting_template = JINJA_ENV.get_template("greeting.jinja")
 greeting = greeting_template.render()

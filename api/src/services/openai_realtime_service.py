@@ -198,21 +198,30 @@ async def receive_messages(client: RTLowLevelClient):
                             "type": "conversation.item.create",
                             "item": {
                                 "type": "function_call_output",
-                                "output": f"Here are the results: {result}",
+                                "output": f"Here are the results: {result}" if tool!='report_grounding' else "",
                                 "call_id": call_id,
                             },
                         }
                     )
 
-                    await client.ws.send_json(
-                        {
-                            "type": "response.create",
-                            "response": {
-                                "modalities": ["text", "audio"],
-                                "instructions": f"Respond to the user that you found {result}. Be concise and friendly.",
-                            },
-                        }
-                    )
+                    if tool != 'report_grounding':
+                        await client.ws.send_json(
+                            {
+                                "type": "response.create",
+                                "response": {
+                                    "modalities": ["text", "audio"],
+                                    "instructions": f"Respond to the user with the results: {result}",
+                                },
+                            }
+                        )
+                    else:
+                        await client.ws.send_json(
+                            {
+                                "type": "extension.middle_tier_tool_response",
+                                "tool_name": tool,
+                                "tool_result": result
+                            }
+                        )
 
                 except Exception as e:
                     print(f"Error calling function {function_name}: {e}")
