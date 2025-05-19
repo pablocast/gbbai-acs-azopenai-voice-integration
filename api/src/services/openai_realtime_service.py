@@ -22,21 +22,37 @@ from src.tools.tool_base import (
     _inform_loan_tool,
 )
 import uuid
+from azure.identity import DefaultAzureCredential
+import os
+from azure.search.documents.aio import SearchClient
 
+# ——— Create tools ———
 tools_schema = [
     _search_tool_schema,
     _report_grounding_tool_schema,
     _inform_loan_tool_schema,
 ]
+
+search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
+search_index = os.environ["AZURE_SEARCH_INDEX"]
+credentials = DefaultAzureCredential()
+search_client = SearchClient(
+    search_endpoint, search_index, credentials, user_agent="my-user-agent"
+)
+
 tools = {
-    "search": _search_tool,
-    "report_grounding": _report_grounding_tool,
+    "search": lambda args: _search_tool(
+        search_client, "default", "chunk_id", "chunk", "text_vector", True, args
+    ),
+    "report_grounding": lambda args: _report_grounding_tool(
+        search_client, "chunk_id", "title", "chunk", args
+    ),
     "inform_loan": _inform_loan_tool,
 }
 
 active_websocket = None
 
-
+# ——— Standardize Tool Call ———
 class RTToolCall:
     tool_call_id: str
     previous_id: str
@@ -45,7 +61,7 @@ class RTToolCall:
         self.tool_call_id = tool_call_id
         self.previous_id = previous_id
 
-
+# ——— Conversation Management ———
 async def start_conversation(
     greeting: str,
     instructions: str,
@@ -87,10 +103,12 @@ async def start_conversation(
             "item": {
                 "type": "message",
                 "role": "user",
-                "content": [{
-                    "type": "input_text",
-                    "text": f"Greet the user with {greeting}",
-                }],
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": f"Greet the user with {greeting}",
+                    }
+                ],
             },
         }
     )
@@ -103,7 +121,7 @@ async def start_conversation(
 
     asyncio.create_task(receive_messages(client))
 
-
+# ——— Audio Management ———
 async def send_audio_to_external_ai(audioData: str):
     await client.send(
         message=InputAudioBufferAppendMessage(
@@ -111,7 +129,7 @@ async def send_audio_to_external_ai(audioData: str):
         )
     )
 
-
+# ——— WebSocket Management ———
 async def receive_messages(client: RTLowLevelClient):
     _tools_pending = {}
     while not client.closed:
@@ -207,12 +225,19 @@ async def receive_messages(client: RTLowLevelClient):
             case _:
                 pass
 
-
+# ——— WebSocket Management ———
 async def init_websocket(socket):
     global active_websocket
     active_websocket = socket
 
+async def send_message(message: str):
+    global active_websocket
+    try:
+        await active_websocket.send(message)
+    except Exception as e:
+        print(f"Failed to send message: {e}")
 
+# ——— Audio Management ———
 async def receive_audio_for_outbound(data):
     try:
         data = {"Kind": "AudioData", "AudioData": {"Data": data}, "StopAudio": None}
@@ -224,21 +249,11 @@ async def receive_audio_for_outbound(data):
     except Exception as e:
         print(e)
 
-
 async def stop_audio():
     stop_audio_data = {"Kind": "StopAudio", "AudioData": None, "StopAudio": {}}
 
     json_data = json.dumps(stop_audio_data)
     await send_message(json_data)
-
-
-async def send_message(message: str):
-    global active_websocket
-    try:
-        await active_websocket.send(message)
-    except Exception as e:
-        print(f"Failed to send message: {e}")
-
 
 async def process_websocket_message_async(stream_data):
     try:

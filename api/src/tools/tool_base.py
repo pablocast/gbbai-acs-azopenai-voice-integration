@@ -61,6 +61,7 @@ _inform_loan_tool_schema = {
     },
 }
 
+
 async def _search_tool(
     search_client: SearchClient,
     semantic_configuration: str | None,
@@ -94,6 +95,7 @@ async def _search_tool(
 
 
 KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_=\-]+$")
+
 
 async def _report_grounding_tool(
     search_client: SearchClient,
