@@ -25,6 +25,9 @@ import uuid
 from azure.identity import DefaultAzureCredential
 import os
 from azure.search.documents.aio import SearchClient
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 # ——— Create tools ———
 tools_schema = [
@@ -50,9 +53,9 @@ tools = {
     "inform_loan": _inform_loan_tool,
 }
 
+# ——— Standardize Tool Call ———
 active_websocket = None
 
-# ——— Standardize Tool Call ———
 class RTToolCall:
     tool_call_id: str
     previous_id: str
