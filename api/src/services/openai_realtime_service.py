@@ -17,9 +17,11 @@ from src.tools.tool_base import (
     _search_tool_schema,
     _report_grounding_tool_schema,
     _inform_loan_tool_schema,
+    _goodbye_tool_schema,
     _search_tool,
     _report_grounding_tool,
     _inform_loan_tool,
+    _goodbye_tool,
 )
 import uuid
 from azure.identity import DefaultAzureCredential
@@ -34,6 +36,7 @@ tools_schema = [
     _search_tool_schema,
     _report_grounding_tool_schema,
     _inform_loan_tool_schema,
+    _goodbye_tool_schema,
 ]
 
 search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
@@ -51,10 +54,12 @@ tools = {
         search_client, "chunk_id", "title", "chunk", args
     ),
     "inform_loan": _inform_loan_tool,
+    "goodbye": _goodbye_tool,
 }
 
 # ——— Standardize Tool Call ———
 active_websocket = None
+
 
 class RTToolCall:
     tool_call_id: str
@@ -63,6 +68,7 @@ class RTToolCall:
     def __init__(self, tool_call_id: str, previous_id: str):
         self.tool_call_id = tool_call_id
         self.previous_id = previous_id
+
 
 # ——— Conversation Management ———
 async def start_conversation(
@@ -80,6 +86,7 @@ async def start_conversation(
         azure_deployment=azure_openai_deployment_model_name,
     )
     await client.connect()
+
     await client.send(
         SessionUpdateMessage(
             session=SessionUpdateParams(
@@ -124,6 +131,7 @@ async def start_conversation(
 
     asyncio.create_task(receive_messages(client))
 
+
 # ——— Audio Management ———
 async def send_audio_to_external_ai(audioData: str):
     await client.send(
@@ -131,6 +139,7 @@ async def send_audio_to_external_ai(audioData: str):
             type="input_audio_buffer.append", audio=audioData, _is_azure=True
         )
     )
+
 
 # ——— WebSocket Management ———
 async def receive_messages(client: RTLowLevelClient):
@@ -198,13 +207,17 @@ async def receive_messages(client: RTLowLevelClient):
                             "type": "conversation.item.create",
                             "item": {
                                 "type": "function_call_output",
-                                "output": f"Here are the results: {result}" if tool!='report_grounding' else "",
+                                "output": (
+                                    f"Here are the results: {result}"
+                                    if tool != "report_grounding"
+                                    else ""
+                                ),
                                 "call_id": call_id,
                             },
                         }
                     )
 
-                    if tool != 'report_grounding':
+                    if function_name != "report_grounding":
                         await client.ws.send_json(
                             {
                                 "type": "response.create",
@@ -212,14 +225,6 @@ async def receive_messages(client: RTLowLevelClient):
                                     "modalities": ["text", "audio"],
                                     "instructions": f"Respond to the user with the results: {result}",
                                 },
-                            }
-                        )
-                    else:
-                        await client.ws.send_json(
-                            {
-                                "type": "extension.middle_tier_tool_response",
-                                "tool_name": tool,
-                                "tool_result": result
                             }
                         )
 
@@ -237,10 +242,12 @@ async def receive_messages(client: RTLowLevelClient):
             case _:
                 pass
 
+
 # ——— WebSocket Management ———
 async def init_websocket(socket):
     global active_websocket
     active_websocket = socket
+
 
 async def send_message(message: str):
     global active_websocket
@@ -248,6 +255,7 @@ async def send_message(message: str):
         await active_websocket.send(message)
     except Exception as e:
         print(f"Failed to send message: {e}")
+
 
 # ——— Audio Management ———
 async def receive_audio_for_outbound(data):
@@ -261,11 +269,13 @@ async def receive_audio_for_outbound(data):
     except Exception as e:
         print(e)
 
+
 async def stop_audio():
     stop_audio_data = {"Kind": "StopAudio", "AudioData": None, "StopAudio": {}}
 
     json_data = json.dumps(stop_audio_data)
     await send_message(json_data)
+
 
 async def process_websocket_message_async(stream_data):
     try:

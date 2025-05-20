@@ -31,6 +31,8 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "src\prompts")
 JINJA_ENV = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR))
 
 load_dotenv(override=True)
+# ——— Store active calls ———
+active_calls = {}
 
 # ——— Callback events URI to handle callback events. ———
 CALLBACK_URI_HOST = os.environ["CALLBACK_URI_HOST"]
@@ -109,7 +111,7 @@ async def incoming_call_handler() -> Response:
             callback_uri = f"{CALLBACK_EVENTS_URI}/{guid}?{query_parameters}"
 
             parsed_url = urlparse(CALLBACK_EVENTS_URI)
-            websocket_url = urlunparse(("wss", parsed_url.netloc, "/ws", "", "", ""))
+            websocket_url = urlunparse(("wss", parsed_url.netloc, f"/ws", "", "", ""))
 
             print(f"callback url {callback_uri}")
             print(f"websocket url {websocket_url}")
@@ -130,6 +132,8 @@ async def incoming_call_handler() -> Response:
                 callback_url=callback_uri,
                 media_streaming=media_streaming,
             )
+
+            active_calls[guid] = answer_call_result.call_connection_id
 
             print(
                 f"Answered call for connection id: {answer_call_result.call_connection_id}"
@@ -190,7 +194,9 @@ async def callbacks(contextId):
             )
             app.logger.info(f"Message:->{event_data['resultInformation']['message']}")
         elif event["type"] == "Microsoft.Communication.CallDisconnected":
-            pass
+            print(f"Call disconnected for connection id: {call_connection_id}")
+            
+
     return Response(status=200)
 
 

@@ -10,6 +10,7 @@ import os
 from datetime import timedelta
 import random
 
+
 _search_tool_schema = {
     "type": "function",
     "name": "search",
@@ -60,6 +61,27 @@ _inform_loan_tool_schema = {
         "additionalProperties": False,
     },
 }
+
+_goodbye_tool_schema = {
+    "type": "function",
+    "name": "goodbye",
+    "description": "Say goodbye to the user with a farewell message.",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": False,
+    },
+}
+
+
+async def _goodbye_tool(args: Any) -> str:
+    import jinja2
+
+    TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..\prompts")
+    JINJA_ENV = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR))
+
+    farewell_message = JINJA_ENV.get_template("farewell.jinja").render()
+    return f"Say: {farewell_message}"
 
 
 async def _search_tool(
