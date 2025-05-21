@@ -148,10 +148,10 @@ python api/main.py
 
 #### Powershell
 ```powershell
-python api/main.py
+python api\main.py
 ```
 
-## Running it on Azure
+## 7. Running it on Azure
 Once the IaC has been deployed, the web API should be ready to use.
 
 
