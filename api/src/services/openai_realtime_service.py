@@ -209,7 +209,7 @@ async def receive_messages(client: RTLowLevelClient):
                                 "type": "function_call_output",
                                 "output": (
                                     f"Here are the results: {result}"
-                                    if tool != "report_grounding"
+                                    if function_name != "report_grounding"
                                     else ""
                                 ),
                                 "call_id": call_id,

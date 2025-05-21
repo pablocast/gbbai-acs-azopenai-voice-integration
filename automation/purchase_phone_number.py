@@ -111,7 +111,7 @@ class PhoneNumberPurchaser:
             )
 
             poller = self.phone_numbers_client.begin_search_available_phone_numbers(
-                "GB",
+                "US",
                 PhoneNumberType.GEOGRAPHIC,
                 PhoneNumberAssignmentType.APPLICATION,
                 capabilities,

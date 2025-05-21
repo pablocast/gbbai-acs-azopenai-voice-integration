@@ -107,3 +107,9 @@ resource "azurerm_monitor_diagnostic_setting" "settings" {
 
 
 }
+
+resource "azurerm_role_assignment" "openai_user_on_search" {
+  scope                 = azurerm_cognitive_account.openai.id
+  role_definition_name  = "Cognitive Services OpenAI User"
+  principal_id          = azurerm_search_service.search.identity[0].principal_id
+}

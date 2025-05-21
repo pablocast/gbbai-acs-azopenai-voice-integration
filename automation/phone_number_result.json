@@ -1,6 +1,6 @@
 {
-    "success": false,
-    "phone_number": "",
-    "error": "",
-    "timestamp": ""
+  "success": true,
+  "phone_number": "+12193219705",
+  "error": "",
+  "timestamp": "2025-05-20 19:23:42"
 }

@@ -71,8 +71,15 @@ terraform {
    ```
 
 4. **Apply the Configuration:**
+   **Bash:**
    ```bash
-   export TF_VAR_principal_object_id=$(az ad signed-in-user show --query objectId -o tsv)
+   export TF_VAR_principal_object_id=$(az ad signed-in-user show --query id -o tsv)
+   terraform apply -auto-approve
+   ```
+
+   **PowerShell:**
+   ```powershell
+   $env:TF_VAR_principal_object_id = (az ad signed-in-user show --query id -o tsv)
    terraform apply -auto-approve
    ```
 

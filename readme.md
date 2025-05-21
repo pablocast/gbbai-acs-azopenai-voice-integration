@@ -47,7 +47,7 @@ Create a virtual environment and install the required Python libraries listed in
 
 #### Bash
 ```bash
-python3 -m venv .venv
+python3.11 -m venv .venv
 source venv/bin/activate
 pip install -r requirements.txt
 pip install api/rtclient-0.5.1-py3-none-any.whl
@@ -55,10 +55,10 @@ pip install api/rtclient-0.5.1-py3-none-any.whl
 
 #### PowerShell
 ```powershell
-python3 -m venv .venv
+python3.11 -m venv .venv
 .venv/Scripts/Activate.ps1
 pip install -r api/requirements.txt
-pip install api/api/rtclient-0.5.3-py3-none-any.whl
+pip install api/rtclient-0.5.3-py3-none-any.whl
 ```
 
 ### 3. Deploy the Terraform IaC

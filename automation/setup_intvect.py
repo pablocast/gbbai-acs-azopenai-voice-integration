@@ -36,7 +36,7 @@ from azure.search.documents.indexes.models import (
     SplitSkill,
     VectorSearch,
     VectorSearchAlgorithmMetric,
-    VectorSearchProfile,
+    VectorSearchProfile
 )
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
@@ -57,7 +57,8 @@ def setup_index(azure_credential, index_name, azure_search_endpoint, azure_stora
                 name=index_name, 
                 type=SearchIndexerDataSourceType.AZURE_BLOB,
                 connection_string=azure_storage_connection_string,
-                container=SearchIndexerDataContainer(name=azure_storage_container)))
+                container=SearchIndexerDataContainer(name=azure_storage_container))
+            )
 
     index_names = [index.name for index in index_client.list_indexes()]
     if index_name in index_names:
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     EMBEDDINGS_DIMENSIONS = 3072
     AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
     AZURE_STORAGE_ENDPOINT = os.environ["AZURE_STORAGE_ENDPOINT"]
-    AZURE_STORAGE_CONNECTION_STRING = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+    AZURE_STORAGE_CONNECTION_STRING = os.environ["MANAGED_IDENTITY_RESOURCE_ID"]
     AZURE_STORAGE_CONTAINER = os.environ["AZURE_STORAGE_CONTAINER"]
     azure_credential = DefaultAzureCredential()
 
