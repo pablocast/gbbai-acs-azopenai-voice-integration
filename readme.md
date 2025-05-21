@@ -127,7 +127,7 @@ devtunnel host <your devtunnel name>
 #### Run the app for the EventGrid Webhook to work
 Then run the python app by running `python api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-### 6.2. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<your devtunnel name>/api/incomingCall`)
+### 6.2. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<name>.devtunnels.ms:8080/api/incomingCall`)
 Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
   - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
   - On the left menu bar click "Events."
@@ -137,7 +137,7 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
     - Provide a unique "System Topic Name"
     - For the "Event Types" select "Incoming Call"
     - For the "Endpoint Details" select "Webhook" from the drop down
-      - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<your devtunnel name>/api/incomingCall`.
+      - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<name>.devtunnels.ms:8080/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
 
 ### 6.3. Run the App
