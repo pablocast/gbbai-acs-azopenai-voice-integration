@@ -10,6 +10,10 @@
 ---
 
 ## Architecture Overview
+The following shows a high-level shape of the software architecture and how responsibilities are distributed across it. It also shows the major technology azure services and how the containers communicate with one another:
+<br>
+[image](./utils/media/repo_call_automation.png.png)
+<br>
 The following Azure services and technologies are used in this project:
 
 1. **Azure Communication Services (ACS)**: Handles incoming and (to be implemented) outgoing PSTN calls.
