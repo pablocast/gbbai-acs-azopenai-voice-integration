@@ -21,22 +21,25 @@ Before you start, ensure you have:
 - A GitHub account and personal access token with necessary permissions.
 - An Azure storage account and container for Terraform state management (see [Terraform State Management](#terraform-state-management) section).
 
-## Forking the Repository
-1. Navigate to the main page of the repository.
-2. Click the "Fork" button in the upper-right corner.
-3. Select your GitHub account as the destination for the fork.
-4. Once forked, clone your repository to your local machine:
-   ```bash
-   git clone https://github.com/YOUR_GITHUB_USERNAME/ACSOpenAIVoice.git
-   cd ACSOpenAIVoice/automation
-   ```
 
 ## Terraform State Management
 ### Creating Azure Storage for Terraform State
+#### Bash
 ```bash
 az group create --name terraform --location eastus
 az storage account create --name terraform<your-prefix> --resource-group terraform --sku Standard_LRS
 az storage container create --name tfstate --account-name terraform<your-prefix>
+```
+
+### Powershell
+```powershell
+$rgName = "terraform"
+$location = "eastus"
+$storageName = "terraform<your-prefix>"
+
+az group create --name $rgName --location $location
+az storage account create --name $storageName --resource-group $rgName --sku Standard_LRS
+az storage container create --name "tfstate" --account-name $storageName
 ```
 
 ### Configuring Terraform Backend
@@ -45,7 +48,7 @@ Update `backend.tf` as needed:
 terraform {
   backend "azurerm" {
     resource_group_name  = "terraform"
-    storage_account_name = "terraform<your-unique-prefix>"
+    storage_account_name = "terraform<your-prefix>"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
     use_azuread_auth     = true
@@ -54,10 +57,9 @@ terraform {
 ```
 
 ## Deployment Steps
-1. **Clone the Repository (if not already done):**
+1. **Navigate to `automation` folder**
    ```bash
-   git clone https://github.com/YOUR_GITHUB_USERNAME/azure-ai-translator-accelerators.git
-   cd azure-ai-translator-accelerators/deployment-scripts/terraform
+   cd automation
    ```
 
 2. **Initialize Terraform:**
@@ -83,30 +85,7 @@ terraform {
    terraform apply -auto-approve
    ```
 
-## Automation for the Recruitment Voice Assistant
-The repository includes an `automation` folder containing Terraform definitions and scripts that facilitate the provisioning of resources for the Recruitment Voice Assistant project. The Terraform templates create and configure essential Azure services—such as Cognitive Services, Azure Communication Services (ACS), Azure OpenAI, Event Grid, Redis, Cosmos DB, Azure Functions, and Log Analytics—needed to run the recruitment voice assistant application.
-
-**Key Points:**
-- **Project**: Recruitment Voice Assistant  
-- **URL**: [https://github.com/Aastha2024/ACSOpenAIVoice](https://github.com/Aastha2024/ACSOpenAIVoice)
-- **Folder**: `automation` (root of Terraform files)
-
-Within the `automation` directory, you will find:
-- **Terraform Configuration Files**: Files like `acs.tf`, `openai.tf`, `cognitive_services.tf`, `cosmos.tf`, and `redis.tf` define the services required for the Recruitment Voice Assistant.
-- **Modules**: The `modules` directory provides reusable Terraform modules, enabling a modular and maintainable infrastructure codebase.
-- **API Deployment**: The `api_zip.zip` file, along with `app.tf` and other resource definitions, illustrate how the application is packaged and deployed onto Azure Functions or Web Apps.
-- **State Management**: The `backend.tf` file ensures that Terraform maintains state in remote Azure storage.
-- **Phone Number Acquisition**: Scripts like `purchase_phone_number.py` can integrate with ACS to provision phone numbers for voice interaction.
-- **Environment Variables**: Before running the automation, rename the `.env.sample` file to `.env` and populate it with the required environment variables for local development and testing.
-
-**Steps for the Recruitment Voice Assistant Automation:**
-1. **Initialize and Apply Terraform:**
-   - Navigate to `automation` folder.
-   - Run `terraform init` to set up providers and modules.
-   - Run `terraform plan` to review the changes.
-   - Run `terraform apply -auto-approve` to provision resources.
-
-2. **Validate Resources:**
+## Validate Resources
    - Check Azure Portal for deployed resources.
    - Test voice interaction features using the provisioned phone number and endpoints.
 
@@ -224,6 +203,3 @@ After deploying your resources with Terraform, you need to manually connect Azur
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Azure Functions Documentation](https://docs.microsoft.com/en-us/azure/azure-functions/)
 - [Azure Cognitive Services Documentation](https://docs.microsoft.com/en-us/azure/cognitive-services/)
-
-## Project URL
-[ACSOpenAIVoice](https://github.com/Aastha2024/ACSOpenAIVoice.git)
