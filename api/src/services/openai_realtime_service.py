@@ -14,10 +14,12 @@ from src.tools.tool_base import (
     _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
+    _exchange_rate_tool_schema,
     _search_tool,
     _report_grounding_tool,
     _inform_loan_tool,
     _goodbye_tool,
+    _exchange_rate_tool,
 )
 import uuid
 from azure.identity import DefaultAzureCredential
@@ -33,6 +35,7 @@ tools_schema = [
     _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
+    _exchange_rate_tool_schema,
 ]
 
 search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
@@ -51,6 +54,7 @@ tools = {
     ),
     "inform_loan": _inform_loan_tool,
     "goodbye": _goodbye_tool,
+    "exchange_rate": _exchange_rate_tool,
 }
 
 # ——— Standardize Tool Call ———

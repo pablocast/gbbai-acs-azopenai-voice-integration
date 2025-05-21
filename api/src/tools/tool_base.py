@@ -6,10 +6,9 @@ from azure.identity import DefaultAzureCredential
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 from datetime import date
-import os
-from datetime import timedelta
+from datetime import timedelta, datetime
 import random
-
+import os
 
 _search_tool_schema = {
     "type": "function",
@@ -69,6 +68,23 @@ _goodbye_tool_schema = {
     "parameters": {
         "type": "object",
         "properties": {},
+        "additionalProperties": False,
+    },
+}
+
+
+_exchange_rate_tool_schema = {
+    "type": "function",
+    "name": "exchange_rate",
+    "description": "Get the exchange rate for a given date. If date is not provided, defaults to today.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "date": {
+                "type": "string",
+                "description": "ISO format date (YYYY-MM-DD). If not provided, defaults to today's date."
+            }
+        },
         "additionalProperties": False,
     },
 }
@@ -173,3 +189,25 @@ async def _inform_loan_tool(args: Any) -> str:
         "next_payment_date": next_payment_date,
     }
     return json.dumps(loan_info)
+
+
+async def _exchange_rate_tool(args: Any) -> str:
+    # If a date is provided, parse it; otherwise default to today's date.
+    input_date = args.get("date")
+    if input_date:
+        try:
+            queried_date = datetime.strptime(input_date, "%Y-%m-%d").date()
+        except ValueError:
+            queried_date = date.today()
+    else:
+        queried_date = date.today()
+
+    # Simulate fetching exchange rate data for the given date.
+    # For demo purposes, a random exchange rate is generated.
+    exchange_rate = round(random.uniform(4000, 5000), 2)
+    result = {
+        "date": queried_date.isoformat(),
+        "exchange_rate": exchange_rate,
+        "currency": "USD to COP"
+    }
+    return json.dumps(result)
