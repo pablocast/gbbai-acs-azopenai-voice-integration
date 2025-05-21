@@ -44,7 +44,7 @@ search_client = SearchClient(
 
 tools = {
     "search": lambda args: _search_tool(
-        search_client, "default", "chunk_id", "chunk", "text_vector", True, args
+        search_client, "voicerag-intvect-semantic-configuration", "chunk_id", "chunk", "text_vector", True, args
     ),
     "report_grounding": lambda args: _report_grounding_tool(
         search_client, "chunk_id", "title", "chunk", args
