@@ -69,15 +69,26 @@ Navigate to for the details for the [Terraform automation deployment Doc](automa
 
 Make sure to follow the manual step of navigating inside the ACS resource and connecting it to the Cognitive Service (aka AI multiservices account) via Managed Identity. This process happens in the background when you do it from ACS. If this step is not done, the phone call will happen but it will hang up instantly.
 
-
-## Running it locally
-
-### 1. Add the Environment Variable values to a .env file
+## 4. Add the Environment Variable values to a .env file
 Based on `.env.sample`, create and construct your `.env` file to allow your local app to access your Azure resource.
 
-### 2. Enable and run a Microsoft DevTunnel
+## 5. 
+
+## 6. Running it locally
+
+### 6.1. Enable and run a Microsoft DevTunnel
 #### Running it for the first time:
+
+#### Bash
 ```bash
+devtunnel login
+devtunnel create --allow-anonymous
+devtunnel port create -p 8000
+devtunnel host
+```
+
+#### Powershell
+```powershell
 devtunnel login
 devtunnel create --allow-anonymous
 devtunnel port create -p 8000
@@ -87,16 +98,25 @@ devtunnel host
 Add the devtunnel link structured as `https://<name>.devtunnels.ms:8080` to the `.env` file as callback URI host.
 
 #### Leveraging a previously created DevTunnel:
+#### Bash
 ```bash
 devtunnel login
 devtunnel list
 # copy the name of the devtunnel you want to target
-devtunnel host <your devtunnel name> 
+devtunnel host <your devtunnel name>
 ```
 
+#### Powershell
+```powershell
+devtunnel login
+devtunnel list
+# copy the name of the devtunnel you want to target
+devtunnel host <your devtunnel name>
+```
+#### Run the app for the EventGrid Webhook to work
 Then run the python app by running `python api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-### 3. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<your devtunnel name>/api/incomingCall`)
+### 6.2. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<your devtunnel name>/api/incomingCall`)
 Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
   - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
   - On the left menu bar click "Events."
@@ -109,13 +129,19 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
       - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<your devtunnel name>/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
 
-#### 4. Run the App
+### 6.3. Run the App
+#### Bash
 ```bash
 python api/main.py
 ```
 
+#### Powershell
+```powershell
+python api/main.py
+```
+
 ## Running it on Azure
-Once the IaC has been deployed, the web API should be ready to use. Feel free to configure the system message within constants.
+Once the IaC has been deployed, the web API should be ready to use.
 
 
 
