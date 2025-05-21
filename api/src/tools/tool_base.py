@@ -160,12 +160,16 @@ async def _inform_loan_tool(args: Any) -> str:
     customer_id = args["customer_id"]
     # Simulate fetching loan information from a database or service
     random_days = random.randint(1, 5)
+    # Simulate a random next payment date
+    due_amount = str(random.randint(100, 1000)) + " pesos"
+    interest_rate = f"{random.uniform(1.0, 5.0):.2f}% efectivo anual"
+
     next_payment_date = (date.today() + timedelta(days=random_days)).isoformat()
     loan_info = {
         "customer_id": customer_id,
         "status": "active",
-        "due_amount": 1500.75,
-        "interest_rate": 3.5,
+        "due_amount": due_amount,
+        "interest_rate": interest_rate,
         "next_payment_date": next_payment_date,
     }
     return json.dumps(loan_info)

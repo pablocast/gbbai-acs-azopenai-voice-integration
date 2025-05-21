@@ -6,11 +6,7 @@ from rtclient import (
     ServerVAD,
     SessionUpdateParams,
     InputAudioBufferAppendMessage,
-    InputAudioTranscription,
-    ItemCreateMessage,
-    ResponseCreateMessage,
-    UserMessageItem,
-    InputTextContentPart,
+    InputAudioTranscription
 )
 from azure.core.credentials import AzureKeyCredential
 from src.tools.tool_base import (
@@ -60,7 +56,6 @@ tools = {
 # ——— Standardize Tool Call ———
 active_websocket = None
 
-
 class RTToolCall:
     tool_call_id: str
     previous_id: str
@@ -71,6 +66,8 @@ class RTToolCall:
 
 
 # ——— Conversation Management ———
+# token_provider = get_bearer_token_provider(credentials, "https://cognitiveservices.azure.com/.default")
+
 async def start_conversation(
     greeting: str,
     instructions: str,
