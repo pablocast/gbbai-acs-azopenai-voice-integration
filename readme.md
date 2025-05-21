@@ -56,9 +56,9 @@ pip install api/rtclient-0.5.1-py3-none-any.whl
 #### PowerShell
 ```powershell
 python3.11 -m venv .venv
-.venv/Scripts/Activate.ps1
-pip install -r api/requirements.txt
-pip install api/rtclient-0.5.3-py3-none-any.whl
+.venv\Scripts\Activate.ps1
+pip install -r api\requirements.txt
+pip install api\rtclient-0.5.3-py3-none-any.whl
 ```
 
 ### 3. Deploy the Terraform IaC
@@ -72,7 +72,18 @@ Make sure to follow the manual step of navigating inside the ACS resource and co
 ## 4. Add the Environment Variable values to a .env file
 Based on `.env.sample`, create and construct your `.env` file to allow your local app to access your Azure resource.
 
-## 5. 
+## 5. Index the data
+This will set up an Azure Search Index to query, using the data in [data folder](./data/)
+
+### Bash
+```bash
+python ./automation/setup_intvect.py
+```
+
+### Powershell
+```powershell
+python .\automation\setup_intvect.py
+```
 
 ## 6. Running it locally
 
