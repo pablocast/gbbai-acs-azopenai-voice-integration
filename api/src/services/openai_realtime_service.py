@@ -202,22 +202,19 @@ async def receive_messages(client: RTLowLevelClient):
                     result = await tool(args)
                     print(f"Function result: {result}")
 
-                    await client.ws.send_json(
-                        {
-                            "type": "conversation.item.create",
-                            "item": {
-                                "type": "function_call_output",
-                                "output": (
-                                    f"Here are the results: {result}"
-                                    if function_name != "report_grounding"
-                                    else ""
-                                ),
-                                "call_id": call_id,
-                            },
-                        }
-                    )
 
-                    if function_name != "report_grounding":
+                    if function_name not in ["report_grounding", "goodbye"]:
+                        await client.ws.send_json(
+                            {
+                                "type": "conversation.item.create",
+                                "item": {
+                                    "type": "function_call_output",
+                                    "output": f"Here are the results: {result}"
+                                    ,
+                                    "call_id": call_id,
+                                },
+                            }
+                        )
                         await client.ws.send_json(
                             {
                                 "type": "response.create",
@@ -225,6 +222,22 @@ async def receive_messages(client: RTLowLevelClient):
                                     "modalities": ["text", "audio"],
                                     "instructions": f"Respond to the user with the results: {result}",
                                 },
+                            }
+                        )
+                    elif function_name == "goodbye":
+                        await client.ws.send_json(
+                            {
+                                "type": "conversation.item.create",
+                                "item": {
+                                    "type": "function_call_output",
+                                    "output": f"**Repeat** the following message: {result}",
+                                    "call_id": call_id,
+                                },
+                            }
+                        )
+                        await client.ws.send_json(
+                            {
+                                "type": "response.create"
                             }
                         )
 
