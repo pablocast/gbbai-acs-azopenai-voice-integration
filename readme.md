@@ -10,20 +10,19 @@
 ---
 
 ## Architecture Overview
-The following shows a high-level shape of the software architecture and how responsibilities are distributed across it. It also shows the major technology azure services and how the containers communicate with one another:
-<br><br>
+The following shows a high-level shape of the software architecture and how responsibilities are distributed across it. It also shows the major **Azure Services** and how the containers communicate with one another:
+<br>
 <div align="center">
   <img src="./utils/media/repo_call_automation.png" alt="Connect" style="width:500px;"/>
 </div>
 <br>
-The following Azure services and technologies are used in this project:
+
+The following Azure services and technologies are used:
 
 1. **Azure Communication Services (ACS)**: Handles incoming and (to be implemented) outgoing PSTN calls.
-2. **Azure OpenAI GPT-4o**: Generates responses to user inputs using large language models.
-3. **Azure Cognitive Services**: Provides speech-to-text and text-to-speech capabilities for interacting with the caller.
-4. **Azure EventGrid**: Routes call events (CallConnected, RecognizeCompleted, etc.) to the **Quart API**.
-5. **Azure Search**: Queries job details and other information for candidate interaction.
-6. **Azure Maps**: Provides geographic location data for determining candidate proximity to job roles.
+2. **Azure OpenAI GPT-4o Realtime**: Generates audio responses to user inputs using large language models.
+3. **Azure EventGrid**: Routes call events (CallConnected, RecognizeCompleted, etc.) to the **Quart API**.
+4 **Azure Search**: Queries context data via function calling.
 7. **Redis Cache**: Caches job details and other global variables to reduce API calls and improve performance.
 8. **Azure Cosmos DB**: Stores call session data, including recordings and conversation history, for long-term storage.
 ---
