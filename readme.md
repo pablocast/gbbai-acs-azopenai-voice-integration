@@ -11,8 +11,8 @@
 
 ## Architecture Overview
 The following shows a high-level shape of the software architecture and how responsibilities are distributed across it. It also shows the major technology azure services and how the containers communicate with one another:
-<br>
-![Connect](./utils/media/repo_call_automation.png)
+<br><br>
+<img src="./utils/media/repo_call_automation.png" alt="Connect" style="width:150px;"/>
 <br>
 The following Azure services and technologies are used in this project:
 
