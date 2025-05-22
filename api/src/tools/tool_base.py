@@ -30,9 +30,9 @@ _search_tool_schema = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search query"},
-            "conversation_summary": {
+            "entities": {
                 "type": "string",
-                "description": "Summarize the conversation between user and AI in to one paragraph of not more than 250 words. Summarize all user messages in to one paragraph and all AI messages in to another paragraph",
+                "description": "Summarize the conversation between user and AI in to one paragraph of not more than 250 words. Exclude greetings and farewells. Focus on user intent and AI response.",
             },
         },
         "required": ["query", "conversation_summary"],
@@ -276,8 +276,6 @@ async def _search_tool(
     search_index_name: str,
     reranker_threshold: float,
     max_docs_for_reranker: int,
-    results_merge_strategy: str,
-    top: Optional[int] | None,
     filter_add_on: Optional[str] | None,
     args: Any,
 ) -> str:

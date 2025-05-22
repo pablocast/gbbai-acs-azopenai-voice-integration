@@ -59,8 +59,6 @@ tools = {
         search_index_name="voicerag-intvect",
         reranker_threshold=2.2,
         max_docs_for_reranker=100,
-        results_merge_strategy="merge",
-        top=None,
         filter_add_on=None,
         args=args,
     ),
