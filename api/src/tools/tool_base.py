@@ -1,24 +1,36 @@
 import re
 from typing import Any
+from dataclasses import dataclass
 import json
-from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
 from azure.search.documents.aio import SearchClient
-from azure.search.documents.models import VectorizableTextQuery
+from azure.search.documents.agent.aio import KnowledgeAgentRetrievalClient
+from azure.search.documents.models import VectorizableTextQuery, QueryCaptionResult
+from azure.search.documents.agent.models import (
+    KnowledgeAgentAzureSearchDocReference,
+    KnowledgeAgentIndexParams,
+    KnowledgeAgentMessage,
+    KnowledgeAgentMessageTextContent,
+    KnowledgeAgentRetrievalRequest,
+    KnowledgeAgentSearchActivityRecord,
+)
 from datetime import date
 from datetime import timedelta, datetime
 import random
 import os
+from typing import Any, Callable, Optional, TypedDict, Union, cast
+
 
 _search_tool_schema = {
     "type": "function",
     "name": "search",
     "description": "Search the knowledge base. The knowledge base is in Spanish, translate to and from Spanish if "
-    + "needed. Results are formatted as a source name first in square brackets, followed by the text "
-    + "content, and a line with '-----' at the end of each result.",
+    "needed. Results are formatted as a source name first in square brackets, followed by the text "
+    "content, and a line with '-----' at the end of each result.",
     "parameters": {
         "type": "object",
-        "properties": {"query": {"type": "string", "description": "Search query"}},
+        "properties": {
+            "query": {"type": "string", "description": "search query including any context needed"},
+        },
         "required": ["query"],
         "additionalProperties": False,
     },
@@ -82,7 +94,7 @@ _exchange_rate_tool_schema = {
         "properties": {
             "date": {
                 "type": "string",
-                "description": "ISO format date (YYYY-MM-DD). If not provided, defaults to today's date."
+                "description": "ISO format date (YYYY-MM-DD). If not provided, defaults to today's date.",
             }
         },
         "additionalProperties": False,
@@ -100,36 +112,36 @@ async def _goodbye_tool(args: Any) -> str:
     return f"Say: {farewell_message}"
 
 
-async def _search_tool(
-    search_client: SearchClient,
-    semantic_configuration: str | None,
-    identifier_field: str,
-    content_field: str,
-    embedding_field: str,
-    use_vector_query: bool,
-    args: Any,
-) -> str:
-    print(f"Searching for '{args['query']}' in the knowledge base.")
-    # Hybrid query using Azure AI Search with (optional) Semantic Ranker
-    vector_queries = []
-    if use_vector_query:
-        vector_queries.append(
-            VectorizableTextQuery(
-                text=args["query"], k_nearest_neighbors=50, fields=embedding_field
-            )
-        )
-    search_results = await search_client.search(
-        search_text=args["query"],
-        query_type="semantic" if semantic_configuration else "simple",
-        semantic_configuration_name=semantic_configuration,
-        top=5,
-        vector_queries=vector_queries,
-        select=", ".join([identifier_field, content_field]),
-    )
-    result = ""
-    async for r in search_results:
-        result += f"[{r[identifier_field]}]: {r[content_field]}\n-----\n"
-    return result
+# async def _search_tool(
+#     search_client: SearchClient,
+#     semantic_configuration: str | None,
+#     identifier_field: str,
+#     content_field: str,
+#     embedding_field: str,
+#     use_vector_query: bool,
+#     args: Any,
+# ) -> str:
+#     print(f"Searching for '{args['query']}' in the knowledge base.")
+#     # Hybrid query using Azure AI Search with (optional) Semantic Ranker
+#     vector_queries = []
+#     if use_vector_query:
+#         vector_queries.append(
+#             VectorizableTextQuery(
+#                 text=args["query"], k_nearest_neighbors=50, fields=embedding_field
+#             )
+#         )
+#     search_results = await search_client.search(
+#         search_text=args["query"],
+#         query_type="semantic" if semantic_configuration else "simple",
+#         semantic_configuration_name=semantic_configuration,
+#         top=5,
+#         vector_queries=vector_queries,
+#         select=", ".join([identifier_field, content_field]),
+#     )
+#     result = ""
+#     async for r in search_results:
+#         result += f"[{r[identifier_field]}]: {r[content_field]}\n-----\n"
+#     return result
 
 
 KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_=\-]+$")
@@ -208,6 +220,101 @@ async def _exchange_rate_tool(args: Any) -> str:
     result = {
         "date": queried_date.isoformat(),
         "exchange_rate": exchange_rate,
-        "currency": "USD to COP"
+        "currency": "USD to COP",
     }
     return json.dumps(result)
+
+
+@dataclass
+class Document:
+    id: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = None
+    sourcepage: Optional[str] = None
+    sourcefile: Optional[str] = None
+    oids: Optional[list[str]] = None
+    groups: Optional[list[str]] = None
+    captions: Optional[list[QueryCaptionResult]] = None
+    score: Optional[float] = None
+    reranker_score: Optional[float] = None
+    search_agent_query: Optional[str] = None
+
+    def serialize_for_results(self) -> dict[str, Any]:
+        result_dict = {
+            "id": self.id,
+            "content": self.content,
+            "category": self.category,
+            "sourcepage": self.sourcepage,
+            "sourcefile": self.sourcefile,
+            "oids": self.oids,
+            "groups": self.groups,
+            "captions": (
+                [
+                    {
+                        "additional_properties": caption.additional_properties,
+                        "text": caption.text,
+                        "highlights": caption.highlights,
+                    }
+                    for caption in self.captions
+                ]
+                if self.captions
+                else []
+            ),
+            "score": self.score,
+            "reranker_score": self.reranker_score,
+            "search_agent_query": self.search_agent_query,
+        }
+        return result_dict
+
+
+async def _search_tool(
+    agent_client: KnowledgeAgentRetrievalClient,
+    search_index_name: str,
+    reranker_threshold: float,
+    max_docs_for_reranker: int,
+    filter_add_on: Optional[str] | None,
+    args: Any,
+) -> str:
+    print(f"Searching for '{args['query']}' in the knowledge base.")
+    # Hybrid query using Azure AI Search with (optional) Semantic Ranker
+    # STEP 1: Invoke agentic retrieval
+    query = args.get("query", "")
+
+    messages = [
+        {
+            "role": "user",
+            "content": f"The user asked: {query}",
+        }
+    ]
+    try:
+        retrieval_results = await agent_client.retrieve(
+            retrieval_request=KnowledgeAgentRetrievalRequest(
+                messages=[
+                    KnowledgeAgentMessage(
+                        role=str(msg["role"]),
+                        content=[
+                            KnowledgeAgentMessageTextContent(text=str(msg["content"]))
+                        ],
+                    )
+                    for msg in messages
+                    if msg["role"] != "system"
+                ],
+                target_index_params=[
+                    KnowledgeAgentIndexParams(
+                        index_name=search_index_name,
+                        reranker_threshold=reranker_threshold,
+                        max_docs_for_reranker=max_docs_for_reranker,
+                        filter_add_on=filter_add_on,
+                        include_reference_source_data=True,
+                    )
+                ],
+            )
+        )
+        documents = json.loads(retrieval_results.response[0].content[0].text)
+        result = ""
+        for document in documents :
+            result += f"[{document['title']}]: {document['content']}\n-----\n"
+        return result
+    except Exception as e:
+        print(f"Error during retrieval: {e}")
+        return "Error during retrieval"

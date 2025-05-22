@@ -38,6 +38,18 @@ variable "openai_deployments" {
         name     = "GlobalStandard"
         capacity = 350
       }
+    },
+    {
+      name = "gpt-4.1"
+      model = {
+        format  = "OpenAI"
+        name    = "gpt-4.1"
+        version = "2025-04-14"
+      }
+      sku = {
+        name     = "GlobalStandard"
+        capacity = 750
+      }
     }
   ]
 }

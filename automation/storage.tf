@@ -11,7 +11,7 @@ resource "azurerm_storage_account" "storage" {
       default_action = "Allow"
       bypass         = ["AzureServices"]
   }
-  default_to_oauth_authentication_enabled = true
+  default_to_oauth_authentication = true
   tags = {}
 }
 

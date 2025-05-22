@@ -6,17 +6,15 @@ from rtclient import (
     ServerVAD,
     SessionUpdateParams,
     InputAudioBufferAppendMessage,
-    InputAudioTranscription
+    InputAudioTranscription,
 )
 from azure.core.credentials import AzureKeyCredential
 from src.tools.tool_base import (
     _search_tool_schema,
-    _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
     _exchange_rate_tool_schema,
     _search_tool,
-    _report_grounding_tool,
     _inform_loan_tool,
     _goodbye_tool,
     _exchange_rate_tool,
@@ -26,13 +24,13 @@ from azure.identity import DefaultAzureCredential
 import os
 from azure.search.documents.aio import SearchClient
 from dotenv import load_dotenv
+from azure.search.documents.agent.aio import KnowledgeAgentRetrievalClient
 
 load_dotenv(override=True)
 
 # ——— Create tools ———
 tools_schema = [
     _search_tool_schema,
-    _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
     _exchange_rate_tool_schema,
@@ -45,12 +43,21 @@ search_client = SearchClient(
     search_endpoint, search_index, credentials, user_agent="my-user-agent"
 )
 
+agent_client = KnowledgeAgentRetrievalClient(
+    search_endpoint, "voicerag-intvect-agent", credentials
+)
+
 tools = {
+    # "search": lambda args: _search_tool(
+    #     search_client, "voicerag-intvect-semantic-configuration", "chunk_id", "chunk", "text_vector", True, args
+    # ),
     "search": lambda args: _search_tool(
-        search_client, "voicerag-intvect-semantic-configuration", "chunk_id", "chunk", "text_vector", True, args
-    ),
-    "report_grounding": lambda args: _report_grounding_tool(
-        search_client, "chunk_id", "title", "chunk", args
+        agent_client,
+        search_index_name="voicerag-intvect",
+        reranker_threshold=2.2,
+        max_docs_for_reranker=100,
+        filter_add_on=None,
+        args=args,
     ),
     "inform_loan": _inform_loan_tool,
     "goodbye": _goodbye_tool,
@@ -59,6 +66,7 @@ tools = {
 
 # ——— Standardize Tool Call ———
 active_websocket = None
+
 
 class RTToolCall:
     tool_call_id: str
@@ -115,7 +123,7 @@ async def start_conversation(
                 "content": [
                     {
                         "type": "input_text",
-                        "text": f"Greet the user with {greeting}",
+                        "text": f"Repeat: {greeting}",
                     }
                 ],
             },
@@ -201,15 +209,13 @@ async def receive_messages(client: RTLowLevelClient):
                     result = await tool(args)
                     print(f"Function result: {result}")
 
-
                     if function_name not in ["report_grounding", "goodbye"]:
                         await client.ws.send_json(
                             {
                                 "type": "conversation.item.create",
                                 "item": {
                                     "type": "function_call_output",
-                                    "output": f"Here are the results: {result}"
-                                    ,
+                                    "output": f"Here are the results: {result}",
                                     "call_id": call_id,
                                 },
                             }
@@ -234,11 +240,7 @@ async def receive_messages(client: RTLowLevelClient):
                                 },
                             }
                         )
-                        await client.ws.send_json(
-                            {
-                                "type": "response.create"
-                            }
-                        )
+                        await client.ws.send_json({"type": "response.create"})
 
                 except Exception as e:
                     print(f"Error calling function {function_name}: {e}")
