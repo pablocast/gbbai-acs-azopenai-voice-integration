@@ -30,7 +30,7 @@ _search_tool_schema = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search query"},
-            "entities": {
+            "conversation_summary": {
                 "type": "string",
                 "description": "Summarize the conversation between user and AI in to one paragraph of not more than 250 words. Exclude greetings and farewells. Focus on user intent and AI response.",
             },
@@ -282,8 +282,8 @@ async def _search_tool(
     print(f"Searching for '{args['query']}' in the knowledge base.")
     # Hybrid query using Azure AI Search with (optional) Semantic Ranker
     # STEP 1: Invoke agentic retrieval
-    query = args["query"]
-    context = args["conversation_summary"]
+    query = args.get("query", "")
+    context = args.get("conversation_summary", "")
 
     messages = [
         {
