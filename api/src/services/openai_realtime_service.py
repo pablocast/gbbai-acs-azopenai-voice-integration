@@ -11,12 +11,10 @@ from rtclient import (
 from azure.core.credentials import AzureKeyCredential
 from src.tools.tool_base import (
     _search_tool_schema,
-    _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
     _exchange_rate_tool_schema,
     _search_tool,
-    _report_grounding_tool,
     _inform_loan_tool,
     _goodbye_tool,
     _exchange_rate_tool,
@@ -33,7 +31,6 @@ load_dotenv(override=True)
 # ——— Create tools ———
 tools_schema = [
     _search_tool_schema,
-    _report_grounding_tool_schema,
     _inform_loan_tool_schema,
     _goodbye_tool_schema,
     _exchange_rate_tool_schema,
@@ -61,9 +58,6 @@ tools = {
         max_docs_for_reranker=100,
         filter_add_on=None,
         args=args,
-    ),
-    "report_grounding": lambda args: _report_grounding_tool(
-        search_client, "chunk_id", "title", "chunk", args
     ),
     "inform_loan": _inform_loan_tool,
     "goodbye": _goodbye_tool,

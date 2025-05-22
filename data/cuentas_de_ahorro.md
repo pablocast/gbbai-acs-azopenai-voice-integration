@@ -125,7 +125,7 @@
 
 ### ¿En cuánto tiempo entregan la tarjeta débito?
 - Web: 4-8 días hábiles (entrega a domicilio).
-- Oficina: entrega inmediata (pre-expedidas), 4-8 días hábiles (realzadas).
+- Oficina: entrega inmediata (pre-expedidas), 4-8 días hábiles (realizadas).
 
 [Ver todas las preguntas frecuentes](https://www.bancolombia.com/centro-de-ayuda/preguntas-frecuentes/resultados?cat=catCuentas)
 

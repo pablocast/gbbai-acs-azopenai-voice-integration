@@ -29,13 +29,9 @@ _search_tool_schema = {
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Search query"},
-            "conversation_summary": {
-                "type": "string",
-                "description": "Summarize the conversation between user and AI in to one paragraph of not more than 250 words. Exclude greetings and farewells. Focus on user intent and AI response.",
-            },
+            "query": {"type": "string", "description": "search query including any context needed"},
         },
-        "required": ["query", "conversation_summary"],
+        "required": ["query"],
         "additionalProperties": False,
     },
 }
@@ -283,12 +279,11 @@ async def _search_tool(
     # Hybrid query using Azure AI Search with (optional) Semantic Ranker
     # STEP 1: Invoke agentic retrieval
     query = args.get("query", "")
-    context = args.get("conversation_summary", "")
 
     messages = [
         {
             "role": "user",
-            "content": f"The conversation context is: {context}. The user asked: {query}",
+            "content": f"The user asked: {query}",
         }
     ]
     try:
