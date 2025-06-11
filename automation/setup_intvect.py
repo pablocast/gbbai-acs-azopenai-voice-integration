@@ -261,8 +261,8 @@ def setup_index(
                     KnowledgeAgentAzureOpenAIModel(
                         azure_open_ai_parameters=AzureOpenAIVectorizerParameters(
                             resource_url=azure_openai_embedding_endpoint,
-                            deployment_name=azure_openai_embedding_deployment,
-                            model_name=azure_openai_embedding_model,
+                            deployment_name=azure_openai_searchagent_deployment,
+                            model_name=azure_openai_searchagent_model,
                         )
                     )
                 ],
@@ -271,7 +271,8 @@ def setup_index(
                 ),
             )
         )
-   
+
+    
 def upload_documents(
     azure_credential,
     indexer_name,
