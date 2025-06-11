@@ -19,3 +19,9 @@ resource "azurerm_cognitive_account" "CognitiveServices" {
     ]
   }
 }
+
+resource "azurerm_role_assignment" "acs_system_identity_role" {
+  scope                =  azurerm_cognitive_account.CognitiveServices.id
+  role_definition_name = "Cognitive Services User"
+  principal_id         = azurerm_communication_service.communication_service.identity[0].principal_id
+}

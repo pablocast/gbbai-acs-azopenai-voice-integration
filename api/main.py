@@ -7,24 +7,24 @@ from datetime import datetime
 from random import randint
 from urllib.parse import urlencode, urlparse, urlunparse
 
-from azure.communication.callautomation import (
-    AudioFormat,
-    MediaStreamingAudioChannelType,
-    MediaStreamingContentType,
-    MediaStreamingOptions,
-    MediaStreamingTransportType,
-)
+from azure.communication.callautomation import PhoneNumberIdentifier
+
 from azure.communication.callautomation.aio import CallAutomationClient
 from azure.eventgrid import EventGridEvent, SystemEventNames
 from numpy import ndarray
 from quart import Quart, Response, json, request, websocket
 from dotenv import load_dotenv
 import jinja2
+from azure.core.messaging import CloudEvent
+import re
 
-from src.services.openai_realtime_service import (
-    init_websocket,
-    start_conversation,
-    process_websocket_message_async,
+from src.services.openai_service import (
+    handle_play,
+    handle_recognize,
+    get_chat_gpt_response,
+    detect_escalate_to_agent_intent,
+    get_sentiment_score,
+    handle_hangup,
 )
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "src\prompts")
@@ -43,10 +43,12 @@ acs_client = CallAutomationClient.from_connection_string(
     os.environ["ACS_CONNECTION_STRING"]
 )
 
-# ——— Azure Realtime Service ———
-azure_openai_service_endpoint = os.environ["AZURE_OPENAI_ENDPOINT"]
+# ——— Azure Services ———
+azure_cognitive_service_endpoint = os.environ["COGNITIVE_SERVICE_ENDPOINT"]
+azure_openai_deployment_model_name = os.environ["AZURE_OPENAI_SEARCHAGENT_DEPLOYMENT"]
 azure_openai_service_key = os.environ["AZURE_OPENAI_API_KEY"]
-azure_openai_deployment_model_name = os.environ["AZURE_OPENAI_REALTIME_DEPLOYMENT"]
+azure_openai_service_endpoint = os.environ["AZURE_OPENAI_ENDPOINT"]
+azure_openai_api_version = os.environ["AZURE_OPENAI_API_VERSION"]
 
 # ——— Create App ———
 app = Quart(__name__)
@@ -55,32 +57,38 @@ app = Quart(__name__)
 instruction_template = JINJA_ENV.get_template("instructions.jinja")
 instructions = instruction_template.render(
     current_date=datetime.now().strftime("%Y-%m-%d"),
-    functions=["search", "inform_loan", "goodbye", "exchange_rate"]
 )
+
 greeting_template = JINJA_ENV.get_template("greeting.jinja")
 greeting = greeting_template.render()
 
+farewell_template = JINJA_ENV.get_template("farewell.jinja")
+farewell = farewell_template.render()
 
-# ——— WebSocket endpoint ———
-@app.websocket("/ws")
-async def ws():
-    print("Client connected to WebSocket")
-    await init_websocket(websocket)
-    await start_conversation(
-        greeting,
-        instructions,
-        azure_openai_service_endpoint,
-        azure_openai_service_key,
-        azure_openai_deployment_model_name,
-    )
-    while True:
-        try:
-            # Receive data from the client
-            data = await websocket.receive()
-            await process_websocket_message_async(data)
-        except Exception as e:
-            print(f"WebSocket connection closed: {e}")
-            break
+escalate_template = JINJA_ENV.get_template("escalate.jinja")
+escalate = escalate_template.render()
+
+connect_agent_template = JINJA_ENV.get_template("connect_agent.jinja")
+connect_agent = connect_agent_template.render()
+
+timeout_silence_prompt_template = JINJA_ENV.get_template("timeout_silence.jinja")
+timeout_silence_prompt = timeout_silence_prompt_template.render()
+
+empty_agent_phone_number_template = JINJA_ENV.get_template("empty_agent.jinja")
+empty_agent_phone_number = empty_agent_phone_number_template.render()
+
+call_transfer_failure_template = JINJA_ENV.get_template("call_failure_transfer.jinja")
+call_transfer_failure = call_transfer_failure_template.render()
+
+CHAT_RESPONSE_EXTRACT_PATTERN = (
+    r"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)"
+)
+
+# ——— Voice Name ———
+voice_name = os.environ.get("VOICE_NAME", "en-US-JennyNeural")
+
+# ——— Agent Phone Number ———
+AGENT_PHONE_NUMBER = os.environ.get("AGENT_PHONE_NUMBER", None)
 
 
 # ——— Incoming Call endpoint ———
@@ -109,27 +117,12 @@ async def incoming_call_handler() -> Response:
             query_parameters = urlencode({"callerId": caller_id})
             callback_uri = f"{CALLBACK_EVENTS_URI}/{guid}?{query_parameters}"
 
-            parsed_url = urlparse(CALLBACK_EVENTS_URI)
-            websocket_url = urlunparse(("wss", parsed_url.netloc, f"/ws", "", "", ""))
-
             print(f"callback url {callback_uri}")
-            print(f"websocket url {websocket_url}")
-
-            media_streaming = MediaStreamingOptions(
-                transport_url=websocket_url,
-                transport_type=MediaStreamingTransportType.WEBSOCKET,
-                content_type=MediaStreamingContentType.AUDIO,
-                audio_channel_type=MediaStreamingAudioChannelType.MIXED,
-                start_media_streaming=True,
-                enable_bidirectional=True,
-                audio_format=AudioFormat.PCM24_K_MONO,
-            )
 
             answer_call_result = await acs_client.answer_call(
                 incoming_call_context=incoming_call_context,
-                operation_context="incomingCall",
+                cognitive_services_endpoint=azure_cognitive_service_endpoint,
                 callback_url=callback_uri,
-                media_streaming=media_streaming,
             )
 
             active_calls[guid] = answer_call_result.call_connection_id
@@ -143,60 +136,180 @@ async def incoming_call_handler() -> Response:
 
 # ——— Call back endpoint ———
 @app.route("/api/callbacks/<contextId>", methods=["POST"])
-async def callbacks(contextId):
-    for event in await request.json:
-        # Parsing callback events
-        global call_connection_id
-        event_data = event["data"]
-        call_connection_id = event_data["callConnectionId"]
-        app.logger.info(
-            f"Received Event:-> {event['type']}, Correlation Id:-> {event_data['correlationId']}, CallConnectionId:-> {call_connection_id}"
-        )
-        if event["type"] == "Microsoft.Communication.CallConnected":
-            call_connection_properties = await acs_client.get_call_connection(
-                call_connection_id
-            ).get_call_properties()
-            media_streaming_subscription = (
-                call_connection_properties.media_streaming_subscription
-            )
+async def handle_callback(contextId):
+    try:
+        global caller_id
+        app.logger.info("Request Json: %s", await request.json)
+        for event_dict in await request.json:
+            event = CloudEvent.from_dict(event_dict)
             app.logger.info(
-                f"MediaStreamingSubscription:--> {media_streaming_subscription}"
+                "%s event received for call connection id: %s",
+                event.type,
+                event.data["callConnectionId"],
             )
-            app.logger.info(
-                f"Received CallConnected event for connection id: {call_connection_id}"
-            )
-            app.logger.info("CORRELATION ID:--> %s", event_data["correlationId"])
-            app.logger.info("CALL CONNECTION ID:--> %s", event_data["callConnectionId"])
-        elif event["type"] == "Microsoft.Communication.MediaStreamingStarted":
-            app.logger.info(
-                f"Media streaming content type:--> {event_data['mediaStreamingUpdate']['contentType']}"
-            )
-            app.logger.info(
-                f"Media streaming status:--> {event_data['mediaStreamingUpdate']['mediaStreamingStatus']}"
-            )
-            app.logger.info(
-                f"Media streaming status details:--> {event_data['mediaStreamingUpdate']['mediaStreamingStatusDetails']}"
-            )
-        elif event["type"] == "Microsoft.Communication.MediaStreamingStopped":
-            app.logger.info(
-                f"Media streaming content type:--> {event_data['mediaStreamingUpdate']['contentType']}"
-            )
-            app.logger.info(
-                f"Media streaming status:--> {event_data['mediaStreamingUpdate']['mediaStreamingStatus']}"
-            )
-            app.logger.info(
-                f"Media streaming status details:--> {event_data['mediaStreamingUpdate']['mediaStreamingStatusDetails']}"
-            )
-        elif event["type"] == "Microsoft.Communication.MediaStreamingFailed":
-            app.logger.info(
-                f"Code:->{event_data['resultInformation']['code']}, Subcode:-> {event_data['resultInformation']['subCode']}"
-            )
-            app.logger.info(f"Message:->{event_data['resultInformation']['message']}")
-        elif event["type"] == "Microsoft.Communication.CallDisconnected":
-            print(f"Call disconnected for connection id: {call_connection_id}")
-            
+            caller_id = request.args.get("callerId").strip()
+            if "+" not in caller_id:
+                caller_id = "+".strip() + caller_id.strip()
 
-    return Response(status=200)
+            app.logger.info("call connected : data=%s", event.data)
+            if event.type == "Microsoft.Communication.CallConnected":
+                await handle_recognize(
+                    acs_client,
+                    greeting,
+                    caller_id,
+                    event.data["callConnectionId"],
+                    voice_name=voice_name,
+                    context="GetFreeFormText",
+                )
+
+            elif event.type == "Microsoft.Communication.RecognizeCompleted":
+                if event.data["recognitionType"] == "speech":
+                    speech_text = event.data["speechResult"]["speech"]
+                    app.logger.info(
+                        "Recognition completed, speech_text =%s", speech_text
+                    )
+                    if speech_text is not None and len(speech_text) > 0:
+                        detect_escalate = await detect_escalate_to_agent_intent(
+                            speech_text,
+                            azure_openai_deployment_model_name,
+                            azure_openai_service_key,
+                            azure_openai_service_endpoint,
+                            azure_openai_api_version,
+                        )
+                        app.logger.info(
+                            f"Detect escalate to agent intent: {detect_escalate}"
+                        )
+                        if detect_escalate:
+                            await handle_play(
+                                acs_client,
+                                call_connection_id=event.data["callConnectionId"],
+                                text_to_play=escalate,
+                                voice_name=voice_name,
+                                context="ConnectAgent",
+                            )
+                        else:
+                            chat_gpt_response = await get_chat_gpt_response(
+                                instructions,
+                                speech_text,
+                                azure_openai_deployment_model_name,
+                                azure_openai_service_key,
+                                azure_openai_service_endpoint,
+                                azure_openai_api_version
+                            )
+                            app.logger.info(f"Chat GPT response:{chat_gpt_response}")
+                            regex = re.compile(CHAT_RESPONSE_EXTRACT_PATTERN)
+                            match = regex.search(chat_gpt_response)
+                            if match:
+                                answer = match.group(1)
+                                sentiment_score = match.group(2).strip()
+                                intent = match.group(3)
+                                category = match.group(4)
+                                app.logger.info(
+                                    f"Chat GPT Answer={answer}, Sentiment Rating={sentiment_score}, Intent={intent}, Category={category}"
+                                )
+                                score = get_sentiment_score(sentiment_score)
+                                app.logger.info(f"Score={score}")
+                                if -1 < score < 5:
+                                    app.logger.info(f"Score is less than 5")
+                                    await handle_play(
+                                        acs_client,
+                                        call_connection_id=event.data[
+                                            "callConnectionId"
+                                        ],
+                                        text_to_play=connect_agent,
+                                        voice_name=voice_name,
+                                        context="ConnectAgent",
+                                    )
+                                else:
+                                    app.logger.info(f"Score is more than 5")
+                                    await handle_recognize(
+                                        acs_client,
+                                        answer,
+                                        caller_id,
+                                        event.data["callConnectionId"],
+                                        voice_name=voice_name,
+                                        context="OpenAISample",
+                                    )
+                            else:
+                                app.logger.info("No match found")
+                                await handle_recognize(
+                                    acs_client,
+                                    chat_gpt_response,
+                                    caller_id,
+                                    event.data["callConnectionId"],
+                                    voice_name=voice_name,
+                                    context="OpenAISample",
+                                )
+
+            elif event.type == "Microsoft.Communication.RecognizeFailed":
+                resultInformation = event.data["resultInformation"]
+                reasonCode = resultInformation["subCode"]
+                context = event.data["operationContext"]
+                global max_retry
+                if reasonCode == 8510 and 0 < max_retry:
+                    await handle_recognize(
+                        acs_client,
+                        timeout_silence_prompt,
+                        caller_id,
+                        event.data["callConnectionId"],
+                        voice_name,
+                    )
+                    max_retry -= 1
+                else:
+                    await handle_play(
+                        acs_client, event.data["callConnectionId"], farewell, voice_name, "Goodbye"
+                    )
+
+            elif event.type == "Microsoft.Communication.PlayCompleted":
+                context = event.data["operationContext"]
+                if context == "TransferFailed" or context.lower() == "Goodbye":
+                    await handle_hangup(event.data["callConnectionId"])
+                elif context == "ConnectAgent":
+                    if not AGENT_PHONE_NUMBER:
+                        app.logger.info(f"Agent phone number is empty")
+                        await handle_play(
+                            acs_client,
+                            call_connection_id=event.data["callConnectionId"],
+                            text_to_play=empty_agent_phone_number,
+                            voice_name=voice_name
+                        )
+                    else:
+                        app.logger.info(f"Initializing the Call transfer...")
+                        transfer_destination = PhoneNumberIdentifier(AGENT_PHONE_NUMBER)
+                        call_connection_client = acs_client.get_call_connection(
+                            call_connection_id=event.data["callConnectionId"]
+                        )
+                        await call_connection_client.transfer_call_to_participant(
+                            target_participant=transfer_destination
+                        )
+                        app.logger.info(f"Transfer call initiated: {context}")
+
+            elif event.type == "Microsoft.Communication.CallTransferAccepted":
+                app.logger.info(
+                    f"Call transfer accepted event received for connection id: {event.data['callConnectionId']}"
+                )
+
+            elif event.type == "Microsoft.Communication.CallTransferFailed":
+                app.logger.info(
+                    f"Call transfer failed event received for connection id: {event.data['callConnectionId']}"
+                )
+                resultInformation = event.data["resultInformation"]
+                sub_code = resultInformation["subCode"]
+                # check for message extraction and code
+                app.logger.info(
+                    f"Encountered error during call transfer, message=, code=, subCode={sub_code}"
+                )
+                await handle_play(
+                    acs_client,
+                    call_connection_id=event.data["callConnectionId"],
+                    text_to_play=call_transfer_failure,
+                    voice_name=voice_name,
+                    context="TransferFailed"
+                )
+
+        return Response(status=200)
+    except Exception as ex:
+        app.logger.info("error in event handling")
 
 
 @app.route("/")
