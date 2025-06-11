@@ -54,7 +54,7 @@ Create a virtual environment and install the required Python libraries listed in
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r api/requirements.txt
 pip install api/rtclient-0.5.1-py3-none-any.whl
 ```
 
