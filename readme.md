@@ -172,15 +172,7 @@ curl -X GET https://<your-callback-uri-host>/outboundCall/<your_phone_number>
 Invoke-RestMethod -Method GET -Uri "https://<your-callback-uri-host>/outboundCall/<your_phone_number>"
 ```
 
-
-
 Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
-
-
-#### Powershell
-```powershell
-python api\main.py
-```
 
 ## 7. Running it on Azure
 Once the IaC has been deployed, the web API should be ready to use.
