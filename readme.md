@@ -13,7 +13,7 @@
 The following shows a high-level shape of the software architecture and how responsibilities are distributed across it. It also shows the major **Azure Services** and how the containers communicate with one another:
 <br>
 <div align="center">
-  <img src="./utils/media/repo_call_automation.png" alt="Connect" style="width:500px;"/>
+  <img src="./utils/media/repo_call_automation_2.png" alt="Connect" style="width:500px;"/>
 </div>
 <br>
 
