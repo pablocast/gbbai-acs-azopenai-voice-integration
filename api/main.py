@@ -21,9 +21,8 @@ import re
 from src.services.openai_service import (
     handle_play,
     handle_recognize,
-    get_chat_gpt_response,
-    detect_escalate_to_agent_intent,
-    get_sentiment_score,
+    get_chat_completions_async,
+    has_intent_async,
     handle_hangup,
 )
 
@@ -79,10 +78,6 @@ empty_agent_phone_number = empty_agent_phone_number_template.render()
 
 call_transfer_failure_template = JINJA_ENV.get_template("call_failure_transfer.jinja")
 call_transfer_failure = call_transfer_failure_template.render()
-
-CHAT_RESPONSE_EXTRACT_PATTERN = (
-    r"\s*Content:(.*)\s*Score:(.*\d+)\s*Intent:(.*)\s*Category:(.*)"
-)
 
 # ——— Voice Name ———
 voice_name = os.environ.get("VOICE_NAME", "en-US-JennyNeural")
@@ -169,17 +164,21 @@ async def handle_callback(contextId):
                         "Recognition completed, speech_text =%s", speech_text
                     )
                     if speech_text is not None and len(speech_text) > 0:
-                        detect_escalate = await detect_escalate_to_agent_intent(
+                        detect_escalate = await has_intent_async(
                             speech_text,
+                            "talk to agent",
                             azure_openai_deployment_model_name,
                             azure_openai_service_key,
                             azure_openai_service_endpoint,
                             azure_openai_api_version,
                         )
+                        detect_escalate = json.loads(detect_escalate)
                         app.logger.info(
                             f"Detect escalate to agent intent: {detect_escalate}"
                         )
-                        if detect_escalate:
+                        agent_intent = detect_escalate.get("intent", False)
+
+                        if agent_intent:
                             await handle_play(
                                 acs_client,
                                 call_connection_id=event.data["callConnectionId"],
@@ -188,26 +187,24 @@ async def handle_callback(contextId):
                                 context="ConnectAgent",
                             )
                         else:
-                            chat_gpt_response = await get_chat_gpt_response(
+                            chat_gpt_response = await get_chat_completions_async(
                                 instructions,
                                 speech_text,
                                 azure_openai_deployment_model_name,
                                 azure_openai_service_key,
                                 azure_openai_service_endpoint,
-                                azure_openai_api_version
+                                azure_openai_api_version,
                             )
                             app.logger.info(f"Chat GPT response:{chat_gpt_response}")
-                            regex = re.compile(CHAT_RESPONSE_EXTRACT_PATTERN)
-                            match = regex.search(chat_gpt_response)
-                            if match:
-                                answer = match.group(1)
-                                sentiment_score = match.group(2).strip()
-                                intent = match.group(3)
-                                category = match.group(4)
+                            if chat_gpt_response:
+                                chat_gpt_response = json.loads(chat_gpt_response)
+                                answer = chat_gpt_response.get("content", "")
+                                score = chat_gpt_response.get("score", -1)
+                                intent = chat_gpt_response.get("intent", "")
+                                category = chat_gpt_response.get("category", "")
                                 app.logger.info(
-                                    f"Chat GPT Answer={answer}, Sentiment Rating={sentiment_score}, Intent={intent}, Category={category}"
+                                    f"Chat GPT Answer={answer}, Sentiment Rating={score}, Intent={intent}, Category={category}"
                                 )
-                                score = get_sentiment_score(sentiment_score)
                                 app.logger.info(f"Score={score}")
                                 if -1 < score < 5:
                                     app.logger.info(f"Score is less than 5")
@@ -257,7 +254,11 @@ async def handle_callback(contextId):
                     max_retry -= 1
                 else:
                     await handle_play(
-                        acs_client, event.data["callConnectionId"], farewell, voice_name, "Goodbye"
+                        acs_client,
+                        event.data["callConnectionId"],
+                        farewell,
+                        voice_name,
+                        "Goodbye",
                     )
 
             elif event.type == "Microsoft.Communication.PlayCompleted":
@@ -271,7 +272,7 @@ async def handle_callback(contextId):
                             acs_client,
                             call_connection_id=event.data["callConnectionId"],
                             text_to_play=empty_agent_phone_number,
-                            voice_name=voice_name
+                            voice_name=voice_name,
                         )
                     else:
                         app.logger.info(f"Initializing the Call transfer...")
@@ -304,7 +305,7 @@ async def handle_callback(contextId):
                     call_connection_id=event.data["callConnectionId"],
                     text_to_play=call_transfer_failure,
                     voice_name=voice_name,
-                    context="TransferFailed"
+                    context="TransferFailed",
                 )
 
         return Response(status=200)

@@ -7,10 +7,20 @@ from azure.communication.callautomation import (
 )
 import re
 import logging
+from pydantic import BaseModel, Field
+
+class ResponseFormat(BaseModel):
+    content: str = Field(..., description="Responda à consulta do cliente de forma breve e clara em duas linhas e pergunte se há algo mais com que você possa ajudar", min_length=1, max_length=1000)
+    score: int = Field(..., description="Pontuação de sentimento com base no tom do cliente", ge=0, le=10)
+    intent: str = Field(..., description="Intenção identificada na consulta do cliente")
+    category: str = Field(..., description="Classifique a intenção em uma das categorias")
+
+class IntentFormat(BaseModel):
+    agent_intent: bool = Field(..., description="Intenção de falar com um agente humano")
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 async def get_chat_completions_async(
     system_prompt,
@@ -36,10 +46,11 @@ async def get_chat_completions_async(
     ]
     global response_content
     try:
-        response = await client.chat.completions.create(
+        response = await client.beta.chat.completions.parse(
             model=azure_openai_deployment_model_name,
             messages=chat_request,
             max_tokens=1000,
+            response_format=ResponseFormat
         )
 
     except Exception as ex:
@@ -47,29 +58,10 @@ async def get_chat_completions_async(
 
     # Extract the response content
     if response is not None:
-        response_content = response["choices"][0]["message"]["content"]
+        response_content = response.choices[0].message.content
     else:
         response_content = ""
     return response_content
-
-
-async def get_chat_gpt_response(
-    instructions,
-    speech_input,
-    azure_openai_deployment_model_name,
-    azure_openai_service_key,
-    azure_openai_service_endpoint,
-    azure_openai_api_version,
-):
-    return await get_chat_completions_async(
-        instructions,
-        speech_input,
-        azure_openai_deployment_model_name,
-        azure_openai_service_key,
-        azure_openai_service_endpoint,
-        azure_openai_api_version,
-    )
-
 
 async def handle_recognize(
     call_automation_client,
@@ -109,24 +101,6 @@ async def handle_hangup(call_automation_client, call_connection_id):
         is_for_everyone=True
     )
 
-
-async def detect_escalate_to_agent_intent(
-    speech_text,
-    azure_openai_deployment_model_name,
-    azure_openai_service_key,
-    azure_openai_service_endpoint,
-    azure_openai_api_version,
-):
-    return await has_intent_async(
-        user_query=speech_text,
-        intent_description="talk to agent",
-        azure_openai_deployment_model_name=azure_openai_deployment_model_name,
-        azure_openai_service_key=azure_openai_service_key,
-        azure_openai_service_endpoint=azure_openai_service_endpoint,
-        azure_openai_api_version=azure_openai_api_version,
-    )
-
-
 async def has_intent_async(
     user_query,
     intent_description,
@@ -136,30 +110,29 @@ async def has_intent_async(
     azure_openai_api_version,
 ):
     is_match = False
-    system_prompt = "You are a helpful assistant. You only respond with 'yes' or 'no'."
+    system_prompt = "You are a helpful assistant"
     combined_prompt = (
         f"does {user_query} have a similar meaning as {intent_description}"
     )
     # combined_prompt = base_user_prompt.format(user_query, intent_description)
-    response = await get_chat_completions_async(
-        system_prompt,
-        combined_prompt,
-        azure_openai_deployment_model_name,
-        azure_openai_service_key,
-        azure_openai_service_endpoint,
-        azure_openai_api_version,
+    client = AsyncAzureOpenAI(
+        api_key=azure_openai_service_key,
+        api_version=azure_openai_api_version,
+        azure_endpoint=azure_openai_service_endpoint,
+    )
+    response = await client.beta.chat.completions.parse(
+        model=azure_openai_deployment_model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": combined_prompt}
+        ],
+        response_format=IntentFormat
     )
 
-    if "yes" in response.lower():
-        is_match = True
+    is_match = response.choices[0].message.content
+
     logger.info(
         f"OpenAI results: is_match={is_match}, customer_query='{user_query}', intent_description='{intent_description}'"
     )
     return is_match
 
-
-def get_sentiment_score(sentiment_score):
-    pattern = r"(\d)+"
-    regex = re.compile(pattern)
-    match = regex.search(sentiment_score)
-    return int(match.group()) if match else -1
