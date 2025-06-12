@@ -151,6 +151,20 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
 python api/main.py
 ```
 
+### 6.4 Place an Outbound Call
+### 6.4 Initiate an Outbound Call
+
+To initiate an outbound call, ensure your ACS application (launched via `python api/main.py`) is running. For the complete HTTP request details, refer to the file [api/requests/initiate_call.http](api/requests/initiate_call.http).
+
+Using an HTTP client, send a GET request to initiate the call. For example, with cURL:
+
+```bash
+curl -X GET https://<name>.devtunnels.ms:8080/api/outboundCall/<your_phone_number> \
+```
+
+Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
+
+
 #### Powershell
 ```powershell
 python api\main.py
