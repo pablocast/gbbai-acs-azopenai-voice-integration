@@ -1,7 +1,7 @@
 // edit this url based on whatever you are using to test locally 
 // (usually localhost or another endpoint)
 @callbackUriHost = <your-callback-uri-host> 
-@phoneNumber = <example-phone-number>
+@phoneNumber = <your_phone_number>
 # markdown example request
 GET  {{callbackUriHost}}/outboundCall/{{phoneNumber}}
 

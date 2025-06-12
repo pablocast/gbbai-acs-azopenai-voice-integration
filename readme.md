@@ -158,7 +158,7 @@ To initiate an outbound call, ensure your ACS application (launched via `python 
 Using an HTTP client, send a GET request to initiate the call. For example, with cURL:
 
 ```bash
-curl -X GET https://<name>.devtunnels.ms:8080/api/outboundCall/<your_phone_number> \
+curl -X GET https://<your-callback-uri-host>/outboundCall/<your_phone_number>
 ```
 
 Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
