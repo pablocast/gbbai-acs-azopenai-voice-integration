@@ -8,11 +8,10 @@ from random import randint
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from azure.communication.callautomation import PhoneNumberIdentifier
-
 from azure.communication.callautomation.aio import CallAutomationClient
 from azure.eventgrid import EventGridEvent, SystemEventNames
 from numpy import ndarray
-from quart import Quart, Response, json, request, websocket
+from quart import Quart, Response, json, request, redirect
 from dotenv import load_dotenv
 import jinja2
 from azure.core.messaging import CloudEvent
@@ -311,6 +310,29 @@ async def handle_callback(contextId):
         return Response(status=200)
     except Exception as ex:
         app.logger.info("error in event handling")
+
+
+@app.route("/outboundCall/<target_phone_number>", methods=["GET"])
+async def outbound_call(target_phone_number: str):
+    print(f"Outbound call to {target_phone_number}")
+    target_participant = PhoneNumberIdentifier(target_phone_number)
+    source_caller = PhoneNumberIdentifier(AGENT_PHONE_NUMBER)
+
+    guid = uuid.uuid4()
+    query_parameters = urlencode({"callerId": target_phone_number})
+    callback_uri = f"{CALLBACK_EVENTS_URI}/{guid}?{query_parameters}"
+
+    call_connection_properties = await acs_client.create_call(
+        target_participant,
+        callback_uri,
+        cognitive_services_endpoint=azure_cognitive_service_endpoint,
+        source_caller_id_number=source_caller,
+    )
+    app.logger.info(
+        "Created call with connection id: %s",
+        call_connection_properties.call_connection_id,
+    )
+    return Response(status=200)
 
 
 @app.route("/")
