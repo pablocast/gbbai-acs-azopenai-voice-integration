@@ -150,6 +150,11 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
 ```bash
 python api/main.py
 ```
+#### Powershell
+```powershell
+python api\main.py
+```
+
 
 ### 6.4 Initiate an Outbound Call
 
@@ -157,9 +162,17 @@ To initiate an outbound call, ensure your ACS application (launched via `python 
 
 Using an HTTP client, send a GET request to initiate the call. For example, with cURL:
 
+#### Bash 
 ```bash
 curl -X GET https://<your-callback-uri-host>/outboundCall/<your_phone_number>
 ```
+
+#### Powershell
+```powershell
+Invoke-RestMethod -Method GET -Uri "https://<your-callback-uri-host>/outboundCall/<your_phone_number>"
+```
+
+
 
 Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
 
