@@ -77,7 +77,18 @@ Make sure to follow the manual step of navigating inside the ACS resource and co
 ## 4. Add the Environment Variable values to a .env file
 Based on `.env.sample`, create and construct your `.env` file to allow your local app to access your Azure resource.
 
-## 5. Index the data
+## 5. Add  "Cognitive Services User" role for Azure Communication Services,  to use Azure Cognitive Services 
+1. Navigate to your Azure Cognitive Services resource.
+2. Select the "Access control (IAM)" tab.
+3. Click the "+ Add" button.
+4. Select "Add role assignments" from the menu. Screenshot of adding a role assignment.
+5. Choose the "Cognitive Services User" role to assign, then click "Next."
+6. For the field "Assign access to" choose the "User, group or service principal."
+7. Press "+ Select members" and a side tab opens.
+8. Search for your Azure Communication Services resource name in the text box and click it when it shows up, then click "Select."
+9. Click "Review + assign," this assigns the role to the managed identity.
+
+## 6. Index the data
 This will set up an Azure Search Index to query, using the data in [data folder](./data/)
 
 ### Bash
@@ -90,9 +101,9 @@ python ./automation/setup_intvect.py
 python .\automation\setup_intvect.py
 ```
 
-## 6. Running it locally
+## 7. Running it locally
 
-### 6.1. Enable and run a Microsoft DevTunnel
+### 7.1. Enable and run a Microsoft DevTunnel
 #### Running it for the first time:
 
 #### Bash
@@ -132,7 +143,7 @@ devtunnel host <your devtunnel name>
 #### Run the app for the EventGrid Webhook to work
 Then run the python app by running `python api/main.py` on your terminal and check that it runs with no issues before proceeding.
 
-### 6.2. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<name>.devtunnels.ms:8080/api/incomingCall`)
+### 7.2. Register an EventGrid Webhook for the IncomingCall event that points to your devtunnel URI (`https://<name>.devtunnels.ms:8080/api/incomingCall`)
 Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
   - To register the event, navigate to your ACS resource in the Azure Portal (follow the Microsoft Learn Docs if you prefer to use the CLI). 
   - On the left menu bar click "Events."
@@ -145,7 +156,7 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
       - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<name>.devtunnels.ms:8080/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
 
-### 6.3. Run the App
+### 7.3. Run the App
 #### Bash
 ```bash
 python api/main.py
@@ -156,7 +167,7 @@ python api\main.py
 ```
 
 
-### 6.4 Initiate an Outbound Call
+### 7.4 Initiate an Outbound Call
 
 To initiate an outbound call, ensure your ACS application (launched via `python api/main.py`) is running. For the complete HTTP request details, refer to the file [api/requests/initiate_call.http](api/requests/initiate_call.http).
 
@@ -174,7 +185,7 @@ Invoke-RestMethod -Method GET -Uri "https://<your-callback-uri-host>/outboundCal
 
 Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
 
-## 7. Running it on Azure
+## 8. Running it on Azure
 Once the IaC has been deployed, the web API should be ready to use.
 
 
