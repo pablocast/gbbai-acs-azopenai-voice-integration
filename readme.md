@@ -153,7 +153,7 @@ Instructions [here](https://learn.microsoft.com/en-us/azure/communication-servic
     - Provide a unique "System Topic Name"
     - For the "Event Types" select "Incoming Call"
     - For the "Endpoint Details" select "Webhook" from the drop down
-      - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<name>.devtunnels.ms:8080/api/incomingCall`.
+      - Once "Webhook" is selected, you will need to configure the URI for the incoming call webhook, as mentioned above: `https://<name>.devtunnels.ms:8000/api/incomingCall`.
     - **Important**: before clicking on "Create" to create the event subscription, the `/api/main.py` script must be running, as well as your devtunnel. ACS sends a verification payload to the app to make sure that the communication is configured properly. The event subscription will not succeed in the portal without the script running. If you see an error, this is most likely the root cause.
 
 ### 7.3. Run the App

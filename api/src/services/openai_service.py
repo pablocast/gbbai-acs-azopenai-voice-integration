@@ -61,7 +61,7 @@ async def get_chat_completions_async(
     azure_openai_service_key,
     azure_openai_service_endpoint,
     azure_openai_api_version,
-    tools=None,
+    tools_description=None,
     tool_choice="auto"
 ):
     client = AsyncAzureOpenAI(
@@ -80,41 +80,40 @@ async def get_chat_completions_async(
     ]
     global response_content
     try:
-        response = await client.beta.chat.completions.parse(
+        response = await client.chat.completions.create(
             model=azure_openai_deployment_model_name,
             messages=chat_request,
             max_tokens=1000,
-            response_format=ResponseFormat,
-            tools=tools,
+            tools=tools_description,
             tool_choice=tool_choice
         )
 
         response_message = response.choices[0].message
         chat_request.append(response_message)
-
+        print(f"Response: {response_message.content}")
          # Handle function calls
         if response_message.tool_calls:
             for tool_call in response_message.tool_calls:
-                if tool_call.function.name == "get_current_time":
-                    args = json.loads(tool_call.function.arguments)
-                    print(f"Function arguments: {function_args}")  
+                print(f"Tool call: {tool_call.function.name}")
+                args = json.loads(tool_call.function.arguments)
+                print(f"Function arguments: {args}")  
 
-                    function = tools.get(
-                        tool_call.function.name
-                    )
+                function = tools.get(
+                    tool_call.function.name
+                )
 
-                    function_response = await function(
-                        args
-                    )
+                function_response = await function(
+                    args
+                )
 
-                    print(f"Function result: {function_response}")
+                print(f"Function result: {function_response}")
 
-                    chat_request.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": "get_current_time",
-                        "content": function_response,
-                    })
+                chat_request.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": "get_current_time",
+                    "content": function_response,
+                })
         else:
             print("No tool calls were made by the model.")  
 
@@ -131,7 +130,7 @@ async def get_chat_completions_async(
 
     # Extract the response content
     if response is not None:
-        response_content = response.choices[0].message.content
+        response_content = final_response.choices[0].message.content
     else:
         response_content = ""
     return response_content
@@ -150,7 +149,7 @@ async def handle_recognize(
         recognize_result = await connection_client.start_recognizing_media(
             input_type=RecognizeInputType.SPEECH,
             target_participant=PhoneNumberIdentifier(callerId),
-            end_silence_timeout=0.5,
+            end_silence_timeout=0.2,
             play_prompt=play_source,
             operation_context=context,
             speech_language="pt-BR",

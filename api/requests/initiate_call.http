@@ -1,7 +1,9 @@
 // edit this url based on whatever you are using to test locally 
 // (usually localhost or another endpoint)
-@callbackUriHost = <your-callback-uri-host> 
-@phoneNumber = <your_phone_number>
+@callbackUriHost = https://d9q8cnxh.brs.devtunnels.ms:8000 
+//<your-callback-uri-host> 
+@phoneNumber = +5511973770085
+//<your_phone_number>
 # markdown example request
 GET  {{callbackUriHost}}/outboundCall/{{phoneNumber}}
 
