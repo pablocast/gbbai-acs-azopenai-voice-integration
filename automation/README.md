@@ -56,6 +56,13 @@ terraform {
 }
 ```
 
+### Update Subscription ID
+Update `terraform.tfvars` with your Subscription ID.
+```hcl
+# Variables
+subscription_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+```
+
 ## Deployment Steps
 1. **Navigate to `automation` folder**
    ```bash
