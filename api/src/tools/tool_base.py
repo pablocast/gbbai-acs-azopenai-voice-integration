@@ -199,8 +199,8 @@ async def _inform_loan_tool(args: Any) -> str:
     # Simulate fetching loan information from a database or service
     random_days = random.randint(1, 5)
     # Simulate a random next payment date
-    due_amount = str(random.randint(100, 1000)) + " pesos"
-    interest_rate = f"{random.uniform(1.0, 5.0):.2f}% efectivo anual"
+    due_amount = str(random.randint(1000, 10000)) + " reais"
+    interest_rate = f"{random.uniform(10.0, 20.0):.2f}% anual efetiva"
 
     next_payment_date = (date.today() + timedelta(days=random_days)).isoformat()
     loan_info = {
@@ -226,11 +226,11 @@ async def _exchange_rate_tool(args: Any) -> str:
 
     # Simulate fetching exchange rate data for the given date.
     # For demo purposes, a random exchange rate is generated.
-    exchange_rate = round(random.uniform(4000, 5000), 2)
+    exchange_rate = round(random.uniform(5, 6), 2)
     result = {
         "date": queried_date.isoformat(),
         "exchange_rate": exchange_rate,
-        "currency": "USD to COP",
+        "currency": "USD to Reais",
     }
     return json.dumps(result)
 
