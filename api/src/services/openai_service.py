@@ -1,13 +1,45 @@
 from typing import List, Dict, Any, Optional
 from openai import AsyncAzureOpenAI
+from azure.identity import DefaultAzureCredential
+from azure.search.documents.aio import SearchClient
 from azure.communication.callautomation import (
     PhoneNumberIdentifier,
     RecognizeInputType,
     TextSource,
 )
-import re
+from azure.search.documents.agent.aio import KnowledgeAgentRetrievalClient
+import os
 import logging
 from pydantic import BaseModel, Field
+import json
+from src.tools.tool_base import (
+    _search_tool,
+    _inform_loan_tool
+)
+
+search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
+search_index = os.environ["AZURE_SEARCH_INDEX"]
+credentials = DefaultAzureCredential()
+search_client = SearchClient(
+    search_endpoint, search_index, credentials, user_agent="my-user-agent"
+)
+
+agent_client = KnowledgeAgentRetrievalClient(
+    search_endpoint, "voicerag-intvect-agent", credentials
+)
+
+tools = {
+    "search": lambda args: _search_tool(
+        agent_client,
+        search_index_name="voicerag-intvect",
+        reranker_threshold=2.2,
+        max_docs_for_reranker=100,
+        filter_add_on=None,
+        args=args,
+    ),
+    "inform_loan": _inform_loan_tool,
+}
+
 
 class ResponseFormat(BaseModel):
     content: str = Field(..., description="Responda à consulta do cliente de forma breve e clara em duas linhas e pergunte se há algo mais com que você possa ajudar", min_length=1, max_length=1000)
@@ -29,6 +61,8 @@ async def get_chat_completions_async(
     azure_openai_service_key,
     azure_openai_service_endpoint,
     azure_openai_api_version,
+    tools_description=None,
+    tool_choice="auto"
 ):
     client = AsyncAzureOpenAI(
         api_key=azure_openai_service_key,
@@ -46,7 +80,45 @@ async def get_chat_completions_async(
     ]
     global response_content
     try:
-        response = await client.beta.chat.completions.parse(
+        response = await client.chat.completions.create(
+            model=azure_openai_deployment_model_name,
+            messages=chat_request,
+            max_tokens=1000,
+            tools=tools_description,
+            tool_choice=tool_choice
+        )
+
+        response_message = response.choices[0].message
+        chat_request.append(response_message)
+        print(f"Response: {response_message.content}")
+         # Handle function calls
+        if response_message.tool_calls:
+            for tool_call in response_message.tool_calls:
+                print(f"Tool call: {tool_call.function.name}")
+                args = json.loads(tool_call.function.arguments)
+                print(f"Function arguments: {args}")  
+
+                function = tools.get(
+                    tool_call.function.name
+                )
+
+                function_response = await function(
+                    args
+                )
+
+                print(f"Function result: {function_response}")
+
+                chat_request.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": "get_current_time",
+                    "content": function_response,
+                })
+        else:
+            print("No tool calls were made by the model.")  
+
+        # Second API call: Get the final response from the model
+        final_response = await client.beta.chat.completions.parse(
             model=azure_openai_deployment_model_name,
             messages=chat_request,
             max_tokens=1000,
@@ -58,7 +130,7 @@ async def get_chat_completions_async(
 
     # Extract the response content
     if response is not None:
-        response_content = response.choices[0].message.content
+        response_content = final_response.choices[0].message.content
     else:
         response_content = ""
     return response_content
@@ -77,7 +149,7 @@ async def handle_recognize(
         recognize_result = await connection_client.start_recognizing_media(
             input_type=RecognizeInputType.SPEECH,
             target_participant=PhoneNumberIdentifier(callerId),
-            end_silence_timeout=0.5,
+            end_silence_timeout=0.2,
             play_prompt=play_source,
             operation_context=context,
             speech_language="pt-BR",

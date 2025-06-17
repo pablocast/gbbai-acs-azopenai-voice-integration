@@ -22,82 +22,92 @@ from typing import Any, Callable, Optional, TypedDict, Union, cast
 
 _search_tool_schema = {
     "type": "function",
-    "name": "search",
-    "description": "Search the knowledge base. The knowledge base is in Spanish, translate to and from Spanish if "
-    "needed. Results are formatted as a source name first in square brackets, followed by the text "
-    "content, and a line with '-----' at the end of each result.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "search query including any context needed"},
+    "function": {
+        "name": "search",
+        "description": "Search the knowledge base. The knowledge base is in Spanish, translate to and from Spanish if "
+        "needed. Results are formatted as a source name first in square brackets, followed by the text "
+        "content, and a line with '-----' at the end of each result.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "search query including any context needed"},
+            },
+            "required": ["query"],
+            "additionalProperties": False,
         },
-        "required": ["query"],
-        "additionalProperties": False,
     },
 }
 
 _report_grounding_tool_schema = {
     "type": "function",
-    "name": "report_grounding",
-    "description": "Report use of a source from the knowledge base as part of an answer (effectively, cite the source). Sources "
-    + "appear in square brackets before each knowledge base passage. Always use this tool to cite sources when responding "
-    + "with information from the knowledge base.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "sources": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "List of source names from last statement actually used, do not include the ones not used to formulate a response",
-            }
+    "function": {
+        "name": "report_grounding",
+        "description": "Report use of a source from the knowledge base as part of an answer (effectively, cite the source). Sources "
+        + "appear in square brackets before each knowledge base passage. Always use this tool to cite sources when responding "
+        + "with information from the knowledge base.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sources": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of source names from last statement actually used, do not include the ones not used to formulate a response",
+                }
+            },
+            "required": ["sources"],
+            "additionalProperties": False,
         },
-        "required": ["sources"],
-        "additionalProperties": False,
     },
 }
 
 _inform_loan_tool_schema = {
     "type": "function",
-    "name": "inform_loan",
-    "description": "Inform bank customers about their loan information including status, amount, and other details. Respond with clear and concise details about the customer's loan.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "customer_id": {
-                "type": "string",
-                "description": "The unique identifier for the bank customer",
-            }
-        },
+    "function": {
+        "name": "inform_loan",
+        "description": "Inform bank customers about their loan information including status, amount, and other details. Respond with clear and concise details about the customer's loan.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "customer_id": {
+                    "type": "string",
+                    "description": "The unique identifier for the bank customer",
+                }
+            },
         "required": ["customer_id", "query"],
         "additionalProperties": False,
+    },
     },
 }
 
 _goodbye_tool_schema = {
     "type": "function",
-    "name": "goodbye",
-    "description": "Say goodbye to the user with a farewell message.",
-    "parameters": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": False,
+    "function": {
+        "name": "goodbye",
+        "description": "Say goodbye to the user with a farewell message.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
     },
 }
 
 
 _exchange_rate_tool_schema = {
     "type": "function",
-    "name": "exchange_rate",
-    "description": "Get the exchange rate for a given date. If date is not provided, defaults to today.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "date": {
-                "type": "string",
-                "description": "ISO format date (YYYY-MM-DD). If not provided, defaults to today's date.",
-            }
+    "function": {
+        "name": "exchange_rate",
+        "description": "Get the exchange rate for a given date. If date is not provided, defaults to today.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "description": "ISO format date (YYYY-MM-DD). If not provided, defaults to today's date.",
+                }
+            },
+            "additionalProperties": False,
         },
-        "additionalProperties": False,
     },
 }
 
@@ -189,8 +199,8 @@ async def _inform_loan_tool(args: Any) -> str:
     # Simulate fetching loan information from a database or service
     random_days = random.randint(1, 5)
     # Simulate a random next payment date
-    due_amount = str(random.randint(100, 1000)) + " pesos"
-    interest_rate = f"{random.uniform(1.0, 5.0):.2f}% efectivo anual"
+    due_amount = str(random.randint(1000, 10000)) + " reais"
+    interest_rate = f"{random.uniform(10.0, 20.0):.2f}% anual efetiva"
 
     next_payment_date = (date.today() + timedelta(days=random_days)).isoformat()
     loan_info = {
@@ -216,11 +226,11 @@ async def _exchange_rate_tool(args: Any) -> str:
 
     # Simulate fetching exchange rate data for the given date.
     # For demo purposes, a random exchange rate is generated.
-    exchange_rate = round(random.uniform(4000, 5000), 2)
+    exchange_rate = round(random.uniform(5, 6), 2)
     result = {
         "date": queried_date.isoformat(),
         "exchange_rate": exchange_rate,
-        "currency": "USD to COP",
+        "currency": "USD to Reais",
     }
     return json.dumps(result)
 

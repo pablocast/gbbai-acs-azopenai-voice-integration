@@ -25,6 +25,11 @@ from src.services.openai_service import (
     handle_hangup,
 )
 
+from src.tools.tool_base import (
+    _search_tool_schema,
+    _inform_loan_tool_schema
+)
+
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "src\prompts")
 JINJA_ENV = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR))
 
@@ -77,6 +82,12 @@ empty_agent_phone_number = empty_agent_phone_number_template.render()
 
 call_transfer_failure_template = JINJA_ENV.get_template("call_failure_transfer.jinja")
 call_transfer_failure = call_transfer_failure_template.render()
+
+# ——— Tools for OpenAI ———
+tools = [
+    _search_tool_schema,
+    _inform_loan_tool_schema
+]
 
 # ——— Voice Name ———
 voice_name = os.environ.get("VOICE_NAME", "en-US-JennyNeural")
@@ -193,6 +204,7 @@ async def handle_callback(contextId):
                                 azure_openai_service_key,
                                 azure_openai_service_endpoint,
                                 azure_openai_api_version,
+                                tools
                             )
                             app.logger.info(f"Chat GPT response:{chat_gpt_response}")
                             if chat_gpt_response:
