@@ -2,8 +2,18 @@
 // (usually localhost or another endpoint)
 @callbackUriHost = https://d9q8cnxh.brs.devtunnels.ms:8000 
 //<your-callback-uri-host> 
-@phoneNumber = +5511973770085
-//<your_phone_number>
+
 # markdown example request
-GET  {{callbackUriHost}}/outboundCall/{{phoneNumber}}
+POST  {{callbackUriHost}}/outboundCall
+Content-Type: application/json
+
+{
+    "targetPhoneNumber": "+5511973770085",
+    "customerName": "John Doe",
+    "transactionValue": 100.50,
+    "transactionCurrency": "Reais",
+    "transactionSite": "Contoso Outdoor",
+    "transactionId": "12345"
+}
+
 

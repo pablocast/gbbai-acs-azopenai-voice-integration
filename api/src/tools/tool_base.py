@@ -111,6 +111,56 @@ _exchange_rate_tool_schema = {
     },
 }
 
+_transaction_decision_tool_schema = {
+    "type": "function",
+    "function": {
+        "name": "transaction_decision",
+        "description": "Approve or cancel a transaction. Provide a clear result based on the requested action.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "transaction_id": {
+                    "type": "string",
+                    "description": "The unique identifier of the transaction"
+                },
+                "action": {
+                    "type": "string",
+                    "enum": ["approve", "cancel"],
+                    "description": "Specify whether to approve or cancel the transaction"
+                }
+            },
+            "required": ["transaction_id", "action"],
+            "additionalProperties": False
+        }
+    }
+}
+
+async def _transaction_decision_tool(args: Any) -> str:
+    transaction_id = args["transaction_id"]
+    action = args["action"]
+    
+    # Simulate calling an external API to process the transaction.
+    # In a real scenario, you would perform an HTTP request here.
+    if action == "approve":
+        result = {
+            "transaction_id": transaction_id,
+            "status": "approved",
+            "message": "The transaction has been approved."
+        }
+    elif action == "cancel":
+        result = {
+            "transaction_id": transaction_id,
+            "status": "cancelled",
+            "message": "The transaction has been cancelled."
+        }
+    else:
+        result = {
+            "transaction_id": transaction_id,
+            "status": "failed",
+            "message": "Invalid action specified."
+        }
+        
+    return json.dumps(result)
 
 async def _goodbye_tool(args: Any) -> str:
     import jinja2

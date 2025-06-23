@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 import json
 from src.tools.tool_base import (
     _search_tool,
-    _inform_loan_tool
+    _transaction_decision_tool
 )
 
 search_endpoint = os.environ["AZURE_SEARCH_ENDPOINT"]
@@ -37,15 +37,13 @@ tools = {
         filter_add_on=None,
         args=args,
     ),
-    "inform_loan": _inform_loan_tool,
+    "transaction_decision": _transaction_decision_tool ,
 }
 
 
 class ResponseFormat(BaseModel):
     content: str = Field(..., description="Responda à consulta do cliente de forma breve e clara em duas linhas e pergunte se há algo mais com que você possa ajudar", min_length=1, max_length=1000)
-    score: int = Field(..., description="Pontuação de sentimento com base no tom do cliente", ge=0, le=10)
     intent: str = Field(..., description="Intenção identificada na consulta do cliente")
-    category: str = Field(..., description="Classifique a intenção em uma das categorias")
 
 class IntentFormat(BaseModel):
     agent_intent: bool = Field(..., description="Intenção de falar com um agente humano")
@@ -55,8 +53,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 async def get_chat_completions_async(
-    system_prompt,
-    user_prompt,
+    conversation_history,
     azure_openai_deployment_model_name,
     azure_openai_service_key,
     azure_openai_service_endpoint,
@@ -71,26 +68,24 @@ async def get_chat_completions_async(
     )
 
     # Define your chat completions request
-    chat_request = [
-        {"role": "system", "content": f"{system_prompt}"},
-        {
-            "role": "user",
-            "content": f" Respond to this question: {user_prompt}?",
-        },
-    ]
     global response_content
     try:
         response = await client.chat.completions.create(
             model=azure_openai_deployment_model_name,
-            messages=chat_request,
+            messages= conversation_history,
             max_tokens=1000,
             tools=tools_description,
             tool_choice=tool_choice
         )
 
         response_message = response.choices[0].message
-        chat_request.append(response_message)
+
+        conversation_history.append(
+            response_message
+        )
+
         print(f"Response: {response_message.content}")
+        
          # Handle function calls
         if response_message.tool_calls:
             for tool_call in response_message.tool_calls:
@@ -108,10 +103,10 @@ async def get_chat_completions_async(
 
                 print(f"Function result: {function_response}")
 
-                chat_request.append({
+                conversation_history.append({
                     "tool_call_id": tool_call.id,
                     "role": "tool",
-                    "name": "get_current_time",
+                    "name": tool_call.function.name,
                     "content": function_response,
                 })
         else:
@@ -120,20 +115,20 @@ async def get_chat_completions_async(
         # Second API call: Get the final response from the model
         final_response = await client.beta.chat.completions.parse(
             model=azure_openai_deployment_model_name,
-            messages=chat_request,
+            messages=conversation_history,
             max_tokens=1000,
             response_format=ResponseFormat
         )
-
+        
     except Exception as ex:
         logger.error("error in openai api call : %s", ex)
 
     # Extract the response content
-    if response is not None:
+    if final_response is not None:
         response_content = final_response.choices[0].message.content
     else:
         response_content = ""
-    return response_content
+    return response_content, conversation_history
 
 async def handle_recognize(
     call_automation_client,
@@ -149,7 +144,7 @@ async def handle_recognize(
         recognize_result = await connection_client.start_recognizing_media(
             input_type=RecognizeInputType.SPEECH,
             target_participant=PhoneNumberIdentifier(callerId),
-            end_silence_timeout=0.2,
+            end_silence_timeout=0.1,
             play_prompt=play_source,
             operation_context=context,
             speech_language="pt-BR",
@@ -172,39 +167,3 @@ async def handle_hangup(call_automation_client, call_connection_id):
     await call_automation_client.get_call_connection(call_connection_id).hang_up(
         is_for_everyone=True
     )
-
-async def has_intent_async(
-    user_query,
-    intent_description,
-    azure_openai_deployment_model_name,
-    azure_openai_service_key,
-    azure_openai_service_endpoint,
-    azure_openai_api_version,
-):
-    is_match = False
-    system_prompt = "You are a helpful assistant"
-    combined_prompt = (
-        f"does {user_query} have a similar meaning as {intent_description}"
-    )
-    # combined_prompt = base_user_prompt.format(user_query, intent_description)
-    client = AsyncAzureOpenAI(
-        api_key=azure_openai_service_key,
-        api_version=azure_openai_api_version,
-        azure_endpoint=azure_openai_service_endpoint,
-    )
-    response = await client.beta.chat.completions.parse(
-        model=azure_openai_deployment_model_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": combined_prompt}
-        ],
-        response_format=IntentFormat
-    )
-
-    is_match = response.choices[0].message.content
-
-    logger.info(
-        f"OpenAI results: is_match={is_match}, customer_query='{user_query}', intent_description='{intent_description}'"
-    )
-    return is_match
-
