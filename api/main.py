@@ -193,7 +193,7 @@ async def handle_callback(contextId):
                             "content": speech_text + f"\n\n (Transaction ID: {transaction_id})"
                         })
                         
-                        gpt_response, history = await get_chat_completions_async(
+                        gpt_response, updated_history = await get_chat_completions_async(
                             conversation_histories[call_connection_id],
                             azure_openai_deployment_model_name,
                             azure_openai_service_key,
@@ -202,8 +202,8 @@ async def handle_callback(contextId):
                             tools
                         )
 
-                        conversation_histories[call_connection_id] = history
-                        
+                        conversation_histories[call_connection_id] = updated_history
+
                         app.logger.info(
                             f"Chat GPT response for call connection id {call_connection_id}: {gpt_response}"
                         )
