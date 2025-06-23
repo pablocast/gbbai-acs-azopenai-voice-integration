@@ -171,16 +171,30 @@ python api\main.py
 
 To initiate an outbound call, ensure your ACS application (launched via `python api/main.py`) is running. For the complete HTTP request details, refer to the file [api/requests/initiate_call.http](api/requests/initiate_call.http).
 
-Using an HTTP client, send a GET request to initiate the call. For example, with cURL:
+Using an HTTP client, send a POST request to initiate the call. For example, with cURL:
 
 #### Bash 
 ```bash
-curl -X GET https://<your-callback-uri-host>/outboundCall/<your_phone_number>
+curl -X POST -H "Content-Type: application/json" -d '{
+    "targetPhoneNumber": "<customer_number>",
+    "customerName": "John Doe",
+    "transactionValue": 100.50,
+    "transactionCurrency": "Reais",
+    "transactionSite": "Contoso Outdoor",
+    "transactionId": "12345"
+}' https://<your-callback-uri-host>/outboundCall  
 ```
 
 #### Powershell
 ```powershell
-Invoke-RestMethod -Method GET -Uri "https://<your-callback-uri-host>/outboundCall/<your_phone_number>"
+Invoke-RestMethod -Method POST -Uri "https://<your-callback-uri-host>/outboundCall" -Method POST -ContentType "application/json" -Body '{
+    "targetPhoneNumber": "<customer_number>",
+    "customerName": "John Doe",
+    "transactionValue": 100.50,
+    "transactionCurrency": "Reais",
+    "transactionSite": "Contoso Outdoor",
+    "transactionId": "12345"
+}'
 ```
 
 Replace the phone numbers and the devtunnel URI as needed. Check the console logs to confirm that the call is initiated and that ACS routes the events correctly.
