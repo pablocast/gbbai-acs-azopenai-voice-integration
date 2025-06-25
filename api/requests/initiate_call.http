@@ -9,8 +9,8 @@ Content-Type: application/json
 
 {
     "targetPhoneNumber": "+5511973770085",
-    "customerName": "John Doe",
-    "transactionValue": 100.50,
+    "customerName": "Pablo Castano",
+    "transactionValue": 350.50,
     "transactionCurrency": "Reais",
     "transactionSite": "Contoso Outdoor",
     "transactionId": "12345"
