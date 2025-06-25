@@ -8,8 +8,8 @@ POST  {{callbackUriHost}}/outboundCall
 Content-Type: application/json
 
 {
-    "targetPhoneNumber": "+5511973770085",
-    "customerName": "Pablo Castano",
+    "targetPhoneNumber": "+56956279373",
+    "customerName": "Cristian Hurtubia",
     "transactionValue": 350.50,
     "transactionCurrency": "Reais",
     "transactionSite": "Contoso Outdoor",
