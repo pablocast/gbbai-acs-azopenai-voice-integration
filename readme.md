@@ -2,10 +2,10 @@
 
 ## Features
 - **PSTN Calling**: Users can call a phone number, and the voice assistant will interact with them using speech-to-text and text-to-speech capabilities.
-- **OpenAI GPT-4o Integration**: Generates dynamic recruitment filtering chat for the potential candidate based on job description.
+- **Azure OpenAI Integration**: Generates dynamic text responses to user inputs using large language models..
 - **Event-Driven Architecture**: Uses **Azure EventGrid** for event-driven routing of call-related events.
 - **Redis Caching**: Stores precomputed job details, competency questions, and location data to minimize repeated API calls and reduce latency.
-- **Azure Services**: Leverages **Azure Maps**, **Azure Search**, and **Azure Cognitive Services** for grounding the call into relevant job description and in future in the candidate CV. 
+- **Azure Services**: Leverages **Azure Maps**, **Azure Search**, and **Azure Cognitive Services** for grounding the call into relevant information. 
 - **Session History**: Session data and call recordings are stored in **Cosmos DB** for long-term storage.
 ---
 
