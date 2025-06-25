@@ -24,7 +24,7 @@ _search_tool_schema = {
     "type": "function",
     "function": {
         "name": "search",
-        "description": "Search the knowledge base. The knowledge base is in Spanish, translate to and from Spanish if "
+        "description": "Search the knowledge base about safeguarding personal bank products. The knowledge base is in Portuguese, translate to and from Portuguese if "
         "needed. Results are formatted as a source name first in square brackets, followed by the text "
         "content, and a line with '-----' at the end of each result.",
         "parameters": {

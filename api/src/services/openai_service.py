@@ -89,26 +89,51 @@ async def get_chat_completions_async(
          # Handle function calls
         if response_message.tool_calls:
             for tool_call in response_message.tool_calls:
-                print(f"Tool call: {tool_call.function.name}")
-                args = json.loads(tool_call.function.arguments)
-                print(f"Function arguments: {args}")  
+                if tool_call.function.name == "transaction_decision":
+                    if has_transaction_decision_been_called(conversation_history):
+                        logger.info("transaction_decision already called, informing model to retry.")
+                        conversation_history.append({
+                            "role": "assistant",
+                            "content": "A decisão sobre esta transação já foi tomada anteriormente. Por favor, prossiga com outra solicitação ou dúvida."
+                        })
+                    else:
+                        print(f"Tool call: {tool_call.function.name}")
+                        args = json.loads(tool_call.function.arguments)
+                        print(f"Function arguments: {args}")
+                        function = tools.get(
+                            tool_call.function.name
+                        )
+                        function_response = await function(
+                            args
+                        )
+                        print(f"Function result: {function_response}")
+                        conversation_history.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": tool_call.function.name,
+                            "content": function_response,
+                        })       
+                else:
+                    print(f"Tool call: {tool_call.function.name}")
+                    args = json.loads(tool_call.function.arguments)
+                    print(f"Function arguments: {args}")  
 
-                function = tools.get(
-                    tool_call.function.name
-                )
+                    function = tools.get(
+                        tool_call.function.name
+                    )
 
-                function_response = await function(
-                    args
-                )
+                    function_response = await function(
+                        args
+                    )
 
-                print(f"Function result: {function_response}")
+                    print(f"Function result: {function_response}")
 
-                conversation_history.append({
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": tool_call.function.name,
-                    "content": function_response,
-                })
+                    conversation_history.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": tool_call.function.name,
+                        "content": function_response,
+                    })
         else:
             print("No tool calls were made by the model.")  
 
@@ -167,3 +192,15 @@ async def handle_hangup(call_automation_client, call_connection_id):
     await call_automation_client.get_call_connection(call_connection_id).hang_up(
         is_for_everyone=True
     )
+
+
+def has_transaction_decision_been_called(history):
+    for message in history:
+        if isinstance(message, dict):
+            if (
+                message.get('role') == 'tool' and
+                message.get('name') == 'transaction_decision' and
+                'tool_call_id' in message  # explicitly check for tool_call_id
+            ):
+                return True
+    return False

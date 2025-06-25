@@ -221,6 +221,7 @@ async def handle_callback(contextId):
                             app.logger.info(
                                 f"Chat GPT Answer={answer}, Intent={intent}"
                             )
+                
                             if intent == "escalar_agente":
                                 await handle_play(
                                     acs_client,
