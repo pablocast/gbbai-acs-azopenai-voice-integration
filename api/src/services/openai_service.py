@@ -172,7 +172,7 @@ async def handle_recognize(
             end_silence_timeout=0.1,
             play_prompt=play_source,
             operation_context=context,
-            speech_language="pt-BR",
+            speech_language="es-CL",
         )
         logger.info("handle_recognize : data=%s", recognize_result)
     except Exception as ex:

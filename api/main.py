@@ -81,7 +81,7 @@ call_transfer_failure = call_transfer_failure_template.render()
 tools = [_search_tool_schema, _transaction_decision_tool_schema]
 
 # ——— Voice Name ———
-voice_name = os.environ.get("VOICE_NAME", "en-US-JennyNeural")
+voice_name = os.environ.get("VOICE_NAME")
 
 # ——— Agent Phone Number ———
 AGENT_PHONE_NUMBER = os.environ.get("AGENT_PHONE_NUMBER", None)
