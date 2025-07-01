@@ -94,7 +94,7 @@ async def get_chat_completions_async(
                         logger.info("transaction_decision already called, informing model to retry.")
                         conversation_history.append({
                             "role": "assistant",
-                            "content": "A decisão sobre esta transação já foi tomada anteriormente. Por favor, prossiga com outra solicitação ou dúvida."
+                            "content": "La decisión sobre esta transacción ya se ha tomado anteriormente. Por favor, continúe con otra solicitud o pregunta."
                         })
                     else:
                         print(f"Tool call: {tool_call.function.name}")

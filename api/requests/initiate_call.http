@@ -9,7 +9,7 @@ Content-Type: application/json
 
 {
     "targetPhoneNumber": "+5511973770085",
-    "customerName": "Emilia Ospina",
+    "customerName": "Pablo Castano",
     "transactionValue": 350.50,
     "transactionCurrency": "Pesos",
     "transactionSite": "Contoso Outdoor",
